@@ -1,0 +1,20 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "plugin-market-marketplace",
+  "version": "1.0.0",
+  "description": "Claude Code 插件市场 - 包含实用的中文插件",
+  "owner": {
+    "name": "Your Name",
+    "email": "your.email@example.com"
+  },
+  "plugins": [
+    {
+      "name": "beautify-commit",
+      "source": "./beautify-commit",
+      "description": "美化 Git Commit 消息的中文工具，支持多种风格（正常、详细、简洁、可爱）",
+      "version": "0.1.0",
+      "category": "git",
+      "tags": ["git", "commit", "中文", "beautify", "style", "chinese"]
+    }
+  ]
+}
