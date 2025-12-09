@@ -1,0 +1,10 @@
+{
+  "name": "beautify-commit",
+  "version": "0.1.0",
+  "description": "美化 Git Commit 消息的中文工具，支持多种风格（正常、详细、简洁、可爱）",
+  "author": {
+    "name": "User",
+    "email": "user@example.com"
+  },
+  "keywords": ["git", "commit", "中文", "beautify", "style"]
+}
