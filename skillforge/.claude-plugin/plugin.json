@@ -1,0 +1,10 @@
+{
+  "name": "skillforge",
+  "version": "1.0.0",
+  "description": "自管理插件系统，用于创建、更新和发布 Claude Code 命令",
+  "author": {
+    "name": "SkillForge",
+    "email": "skillforge@example.com"
+  },
+  "keywords": ["skill", "plugin", "automation", "development", "中文"]
+}

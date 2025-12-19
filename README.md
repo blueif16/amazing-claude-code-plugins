@@ -15,6 +15,17 @@
 - 🤖 智能分析：自动分析代码变更，生成合适的 commit 消息
 - ✨ 二次元风格：可爱风格使用精选的二次元 emoji 和颜文字
 
+### SkillForge
+
+自管理的插件系统，用于创建、更新和发布 Claude Code 命令。
+
+**功能特点:**
+- 🛠️ 创建命令：使用模板快速生成新命令
+- ✏️ 更新命令：智能修改现有命令
+- 🔄 同步发布：自动提交并推送到 Git
+- 📚 知识库：命令编写的最佳实践指南
+- 🇨🇳 中文支持：所有操作和文档都使用中文
+
 ## 安装方法
 
 ### 方法 1: 本地安装（推荐用于测试）
@@ -31,9 +42,13 @@ claude
 
 # 安装插件
 /plugin install beautify-commit@plugin-market-marketplace
+/plugin install skillforge@plugin-market-marketplace
 
 # 重启 Claude Code 后使用
 /beautify-commit
+/create-skill
+/update-skill
+/sync-marketplace
 ```
 
 ### 方法 2: 从 GitHub 安装
@@ -48,6 +63,8 @@ claude
 
 ## 使用插件
 
+### Beautify Commit
+
 安装完成后，在你的项目中运行：
 
 ```bash
@@ -55,6 +72,32 @@ claude
 ```
 
 首次使用时会询问你喜欢的 commit 风格，之后会自动记住你的选择。
+
+### SkillForge
+
+创建新命令：
+
+```bash
+/create-skill
+```
+
+更新现有命令：
+
+```bash
+/update-skill
+```
+
+同步到 Git：
+
+```bash
+/sync-marketplace
+```
+
+查看最佳实践：
+
+```bash
+/skillforge-knowledge
+```
 
 ## 目录结构
 
@@ -69,6 +112,20 @@ plugin-market-marketplace/
 │   │   └── beautify-commit.md    # 命令实现
 │   ├── examples/
 │   │   └── beautify-commit.local.md  # 配置示例
+│   └── README.md                 # 插件文档
+├── skillforge/                    # SkillForge 插件
+│   ├── .claude-plugin/
+│   │   └── plugin.json           # 插件配置
+│   ├── commands/
+│   │   ├── create-skill.md       # 创建命令
+│   │   ├── update-skill.md       # 更新命令
+│   │   ├── sync-marketplace.md   # 同步命令
+│   │   ├── skillforge-knowledge.md  # 知识库
+│   │   └── create-skill/
+│   │       ├── scripts/
+│   │       │   └── find-marketplace.sh  # 查找脚本
+│   │       └── templates/
+│   │           └── command-template.md  # 命令模板
 │   └── README.md                 # 插件文档
 └── README.md                      # 本文件
 ```
@@ -91,6 +148,7 @@ git push -u origin main
 ```bash
 /plugin marketplace add yourusername/plugin-market-marketplace
 /plugin install beautify-commit@plugin-market-marketplace
+/plugin install skillforge@plugin-market-marketplace
 ```
 
 ## 添加更多插件

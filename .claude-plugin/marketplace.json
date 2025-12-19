@@ -15,6 +15,14 @@
       "version": "0.1.0",
       "category": "git",
       "tags": ["git", "commit", "中文", "beautify", "style", "chinese"]
+    },
+    {
+      "name": "skillforge",
+      "source": "./skillforge",
+      "description": "自管理插件系统，用于创建、更新和发布 Claude Code 命令",
+      "version": "1.0.0",
+      "category": "development",
+      "tags": ["skill", "plugin", "automation", "development", "中文", "创建", "管理"]
     }
   ]
 }
