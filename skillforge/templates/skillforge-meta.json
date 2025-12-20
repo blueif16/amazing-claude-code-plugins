@@ -1,0 +1,6 @@
+{
+  "pluginName": "{{PLUGIN_NAME}}",
+  "version": "0.1.0",
+  "createdAt": "{{ISO_DATE}}",
+  "lastSync": null
+}
