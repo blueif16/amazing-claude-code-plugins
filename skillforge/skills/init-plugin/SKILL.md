@@ -11,18 +11,37 @@ allowed-tools:
 
 ## 插件目录结构
 
+### 开发工作目录（.claude/）
+开发时所有组件都创建在 .claude/ 目录下，可立即测试：
+
 ```
-{plugin-name}-dev/
-├── .claude-plugin/
-│   └── plugin.json          # 插件元数据
+.claude/
 ├── skills/                  # 立即可用的skills
 │   └── {skill-name}/
 │       └── SKILL.md
 ├── agents/                  # 立即可用的agents
 │   └── {agent-name}.md
-├── commands/                # 需要安装才能使用
+├── commands/                # 需要本地安装才能使用
 │   └── {command-name}.md
-├── hooks/                   # 立即可用的hooks
+└── hooks/                   # 立即可用的hooks
+    └── hooks.json
+```
+
+### 发布打包目录（{plugin-name}-dev/）
+sync-to-marketplace 时创建，用于发布到 marketplace：
+
+```
+{plugin-name}-dev/
+├── .claude-plugin/
+│   └── plugin.json          # 插件元数据
+├── skills/                  # 从 .claude/skills/ 复制
+│   └── {skill-name}/
+│       └── SKILL.md
+├── agents/                  # 从 .claude/agents/ 复制
+│   └── {agent-name}.md
+├── commands/                # 从 .claude/commands/ 复制
+│   └── {command-name}.md
+├── hooks/                   # 从 .claude/hooks/ 复制
 │   └── hooks.json
 ├── .skillforge-meta        # SkillForge元数据
 ├── .gitignore
@@ -119,12 +138,13 @@ description: 命令描述
 ## .gitignore (项目根目录)
 
 ```
+.claude/settings*.json
 {plugin-name}-dev/
 .DS_Store
 *.log
 ```
 
-## .gitignore (plugin-dev目录)
+## .gitignore ({plugin-name}-dev/ 目录)
 
 ```
 .DS_Store
@@ -166,13 +186,63 @@ description: 命令描述
 
 ## 组件类型说明
 
-### 立即可用（无需安装）
-- **Skills**: 创建后立即可在当前会话使用
-- **Agents**: 创建后立即可在/agents菜单使用
-- **Hooks**: 创建后立即生效
+### 立即可用（创建在 .claude/ 后立即生效）
+- **Skills**: 创建在 .claude/skills/ 后立即可在当前会话使用
+- **Agents**: 创建在 .claude/agents/ 后立即可在/agents菜单使用
+- **Hooks**: 创建在 .claude/hooks/ 后立即生效
 
-### 需要安装
-- **Commands**: 必须通过本地marketplace安装后才能使用
-  1. `/plugin marketplace add ./{plugin-name}-dev`
-  2. `/plugin install {plugin-name}-dev@local`
-  3. 测试: `/{command-name}`
+### 需要本地安装（Commands）
+- **Commands**: 创建在 .claude/commands/ 后，需要通过本地marketplace安装才能使用
+  1. 先创建 command 在 .claude/commands/
+  2. 本地安装测试: `/plugin marketplace add ./.claude`
+  3. 安装: `/plugin install {plugin-name}@local`
+  4. 测试: `/{command-name}`
+
+### 发布到 Marketplace
+使用 sync-to-marketplace skill：
+  1. 自动创建 {plugin-name}-dev/ 目录
+  2. 从 .claude/* 复制所有组件到 {plugin-name}-dev/*
+  3. 同步到远程 marketplace
+
+## 完整开发工作流
+
+### 1. 开发阶段（在 .claude/ 中工作）
+```
+创建 skill    → .claude/skills/{skill-name}/SKILL.md     (立即可用)
+创建 agent    → .claude/agents/{agent-name}.md           (立即可用)
+创建 hook     → .claude/hooks/hooks.json                 (立即可用)
+创建 command  → .claude/commands/{command-name}.md       (需本地安装测试)
+```
+
+### 2. 本地测试 Commands
+```
+/plugin marketplace add ./.claude
+/plugin install {plugin-name}@local
+/{command-name}
+```
+
+### 3. 发布到 Marketplace
+```
+运行 sync-to-marketplace skill:
+  - 创建 {plugin-name}-dev/ 目录
+  - 复制 .claude/* → {plugin-name}-dev/*
+  - 添加 .claude-plugin/plugin.json
+  - 添加 .skillforge-meta
+  - 同步到远程 marketplace
+```
+
+### 4. 目录关系
+```
+.claude/                    # 开发工作目录（真实工作位置）
+  ├── skills/
+  ├── agents/
+  ├── commands/
+  └── hooks/
+
+{plugin-name}-dev/          # 打包发布目录（由 sync 创建）
+  ├── .claude-plugin/
+  ├── skills/               # 从 .claude/skills/ 复制
+  ├── agents/               # 从 .claude/agents/ 复制
+  ├── commands/             # 从 .claude/commands/ 复制
+  └── hooks/                # 从 .claude/hooks/ 复制
+```
