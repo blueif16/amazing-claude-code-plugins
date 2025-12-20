@@ -8,6 +8,7 @@ allowed-tools:
   - Bash(git diff:*)
   - Bash(git branch:*)
   - Bash(git log:*)
+  - Bash(git push:*)
   - Read
   - AskUserQuestion
 ---
@@ -136,6 +137,19 @@ style: normal
    ```
 3. 使用 `git status` 验证 commit 成功
 
+### 第五步：询问是否推送
+
+1. 使用 AskUserQuestion 工具询问用户是否要推送到远程仓库
+2. 问题：「是否要将 commit 推送到远程仓库？」
+3. 选项：
+   - **是** - 立即执行 `git push`
+   - **否** - 跳过推送，仅在本地保留 commit
+4. 如果用户选择「是」：
+   - 执行 `git push` 命令
+   - 显示推送结果
+5. 如果用户选择「否」：
+   - 提示用户可以稍后手动执行 `git push`
+
 ## 重要注意事项
 
 1. **一次性执行**：stage 文件和创建 commit 必须在同一个响应中完成，使用多个 Bash 工具调用
@@ -163,3 +177,5 @@ style: normal
 4. 根据风格生成 commit 消息
 5. 执行 git add 和 git commit
 6. 显示 commit 结果
+7. 询问用户是否要推送到远程仓库
+8. 如果用户选择推送，则执行 git push 并显示结果
