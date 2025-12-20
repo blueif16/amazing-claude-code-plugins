@@ -13,7 +13,7 @@ allowed-tools: Read, Edit, Glob
 
 ### 1. 列出所有agents
 
-1. 查找 `{plugin-name}-dev/agents/` 目录
+1. 查找 `.claude/agents/` 目录
 2. 列出所有agent（编号列表）
 3. 询问："要更新哪个agent？"
 
@@ -45,12 +45,12 @@ allowed-tools: Read, Edit, Glob
 
 ```
 ✅ Agent已更新: {agent-name}
-📁 位置: ./{plugin-name}-dev/agents/{agent-name}.md
+📁 位置: ./.claude/agents/{agent-name}.md
 ```
 
 ## 错误处理
 
-- 未找到plugin-dev → 提示先创建agent
+- 未找到 .claude/ → 提示先创建agent
 - YAML格式错误 → 报告具体问题
 - 无效的模型值 → 提示有效选项
 - 无写入权限 → 报告错误
