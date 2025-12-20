@@ -14,7 +14,7 @@ allowed-tools: Write, Read, Bash, Glob
 ### 1. 检查插件结构
 
 ```
-检查当前目录是否存在 *-dev/ 目录
+检查当前目录是否存在 .claude/ 目录
 ├─ 找到 → 继续到步骤3
 └─ 未找到 → 进入步骤2
 ```
@@ -24,15 +24,11 @@ allowed-tools: Write, Read, Bash, Glob
 1. 读取 init-plugin skill 获取结构知识
 2. 询问用户："这个插件应该叫什么名字？"
 3. 验证名称格式（小写、连字符）
-4. 创建完整的 {plugin-name}-dev/ 结构：
-   - .claude-plugin/plugin.json
-   - skills/
-   - agents/
-   - commands/
-   - hooks/hooks.json
-   - .skillforge-meta
-   - .gitignore
-   - README.md
+4. 创建 .claude/ 结构：
+   - .claude/skills/
+   - .claude/agents/
+   - .claude/commands/
+   - .claude/hooks/hooks.json
 5. 继续到步骤3
 
 ### 3. 收集skill信息
@@ -44,7 +40,7 @@ allowed-tools: Write, Read, Bash, Glob
 
 ### 4. 创建skill
 
-1. 创建目录: `{plugin-name}-dev/skills/{skill-name}/`
+1. 创建目录: `.claude/skills/{skill-name}/`
 2. 从模板生成 SKILL.md
 3. 插入用户输入（完全按用户提供的内容，不做修改）
 4. 显示成功消息
@@ -59,7 +55,7 @@ allowed-tools: Write, Read, Bash, Glob
 
 ```
 ✅ Skill已创建: {skill-name}
-📁 位置: ./{plugin-name}-dev/skills/{skill-name}/SKILL.md
+📁 位置: ./.claude/skills/{skill-name}/SKILL.md
 🚀 该skill立即可用
 ```
 
@@ -74,12 +70,12 @@ allowed-tools: Write, Read, Bash, Glob
 用户: "创建一个reddit-upvote skill"
 
 执行流程:
-1. 检查 *-dev/ → 未找到
+1. 检查 .claude/ → 未找到
 2. 询问插件名 → "reddit-automation"
-3. 创建 reddit-automation-dev/ 完整结构
+3. 创建 .claude/ 结构
 4. 询问skill信息:
    - 名称: reddit-upvote
    - 描述: Upvote Reddit posts
    - 工具: (留空)
-5. 创建 reddit-automation-dev/skills/reddit-upvote/SKILL.md
+5. 创建 .claude/skills/reddit-upvote/SKILL.md
 6. 输出成功消息

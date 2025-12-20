@@ -14,7 +14,7 @@ allowed-tools: Write, Read, Bash, Glob
 ### 1. 检查插件结构
 
 ```
-检查当前目录是否存在 *-dev/ 目录
+检查当前目录是否存在 .claude/ 目录
 ├─ 找到 → 继续到步骤3
 └─ 未找到 → 进入步骤2（同create-skill的自动初始化）
 ```
@@ -33,7 +33,7 @@ allowed-tools: Write, Read, Bash, Glob
 
 ### 4. 创建agent
 
-1. 创建文件: `{plugin-name}-dev/agents/{agent-name}.md`
+1. 创建文件: `.claude/agents/{agent-name}.md`
 2. 从模板生成内容，插入用户输入
 3. 显示成功消息
 
@@ -47,7 +47,7 @@ allowed-tools: Write, Read, Bash, Glob
 
 ```
 ✅ Agent已创建: {agent-name}
-📁 位置: ./{plugin-name}-dev/agents/{agent-name}.md
+📁 位置: ./.claude/agents/{agent-name}.md
 🚀 该agent立即可在/agents菜单中使用
 ```
 
@@ -63,11 +63,11 @@ allowed-tools: Write, Read, Bash, Glob
 用户: "创建一个git-helper agent"
 
 执行流程:
-1. 检查 *-dev/ → 找到 reddit-automation-dev/
+1. 检查 .claude/ → 找到
 2. 询问agent信息:
    - 名称: git-helper
    - 描述: 帮助执行git操作和解决冲突
    - 模型: sonnet
    - 工具: Bash, Read
-3. 创建 reddit-automation-dev/agents/git-helper.md
+3. 创建 .claude/agents/git-helper.md
 4. 输出成功消息

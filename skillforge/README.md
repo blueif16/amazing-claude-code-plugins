@@ -60,8 +60,8 @@ SkillForge会询问：
 SkillForge会：
 1. 检测无插件结构
 2. 询问插件名称
-3. 创建完整的 {plugin-name}-dev/ 结构
-4. 创建skill文件
+3. 创建 .claude/ 目录结构
+4. 创建skill文件在 .claude/skills/
 5. Skill立即可用
 
 ### 3. 添加更多组件
@@ -82,8 +82,8 @@ SkillForge会：
 
 SkillForge会显示安装步骤：
 ```
-/plugin marketplace add ./{plugin-name}-dev
-/plugin install {plugin-name}-dev@local
+/plugin marketplace add ./.claude
+/plugin install {plugin-name}@local
 /{command-name}
 ```
 
@@ -94,10 +94,13 @@ SkillForge会显示安装步骤：
 ```
 
 SkillForge会：
-1. 验证插件结构
-2. 询问版本号
-3. 复制到marketplace
-4. 自动commit和push
+1. 检查 .claude/ 目录
+2. 创建 {plugin-name}-dev/ 打包目录
+3. 从 .claude/* 复制到 {plugin-name}-dev/*
+4. 验证插件结构
+5. 询问版本号
+6. 复制到marketplace
+7. 自动commit和push
 
 ## 组件说明
 
@@ -124,20 +127,37 @@ SkillForge会：
 
 ## 插件结构
 
-SkillForge创建的插件结构：
+### 开发工作目录（.claude/）
+开发时所有组件都创建在这里，可立即测试：
 
 ```
-{plugin-name}-dev/
-├── .claude-plugin/
-│   └── plugin.json          # 插件元数据
+.claude/
 ├── skills/                  # 立即可用
 │   └── {skill-name}/
 │       └── SKILL.md
 ├── agents/                  # 立即可用
 │   └── {agent-name}.md
-├── commands/                # 需要安装
+├── commands/                # 需要本地安装
 │   └── {command-name}.md
-├── hooks/                   # 立即可用
+└── hooks/                   # 立即可用
+    └── hooks.json
+```
+
+### 发布打包目录（{plugin-name}-dev/）
+sync-to-marketplace 时创建，用于发布：
+
+```
+{plugin-name}-dev/
+├── .claude-plugin/
+│   └── plugin.json          # 插件元数据
+├── skills/                  # 从 .claude/skills/ 复制
+│   └── {skill-name}/
+│       └── SKILL.md
+├── agents/                  # 从 .claude/agents/ 复制
+│   └── {agent-name}.md
+├── commands/                # 从 .claude/commands/ 复制
+│   └── {command-name}.md
+├── hooks/                   # 从 .claude/hooks/ 复制
 │   └── hooks.json
 ├── .skillforge-meta        # SkillForge元数据
 ├── .gitignore
@@ -156,8 +176,8 @@ SkillForge创建的插件结构：
 # 步骤2: 创建第一个skill（自动初始化插件）
 用户: "创建reddit-upvote skill"
 → 询问插件名称: reddit-automation
-→ 创建完整插件结构
-→ 创建skill文件
+→ 创建 .claude/ 目录结构
+→ 创建skill文件在 .claude/skills/
 → ✅ Skill立即可用
 
 # 步骤3: 添加更多组件
@@ -177,6 +197,8 @@ SkillForge创建的插件结构：
 
 # 步骤5: 发布
 用户: "同步到marketplace"
+→ 创建 {plugin-name}-dev/ 打包目录
+→ 从 .claude/* 复制到 {plugin-name}-dev/*
 → 验证结构
 → 询问版本号
 → 复制到marketplace
@@ -281,7 +303,7 @@ SkillForge会显示具体错误和解决方案。
 
 如果在错误的目录：
 ```
-错误: "未找到plugin-dev。创建一个skill开始。"
+错误: "未找到 .claude/ 目录。创建一个skill开始。"
 ```
 
 解决: 创建任何组件，SkillForge会自动初始化。

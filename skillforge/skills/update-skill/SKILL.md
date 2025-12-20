@@ -13,7 +13,7 @@ allowed-tools: Read, Edit, Glob
 
 ### 1. 列出所有skills
 
-1. 查找 `{plugin-name}-dev/skills/` 目录
+1. 查找 `.claude/skills/` 目录
 2. 列出所有skill（编号列表）
 3. 询问："要更新哪个skill？"
 
@@ -44,12 +44,12 @@ allowed-tools: Read, Edit, Glob
 
 ```
 ✅ Skill已更新: {skill-name}
-📁 位置: ./{plugin-name}-dev/skills/{skill-name}/SKILL.md
+📁 位置: ./.claude/skills/{skill-name}/SKILL.md
 ```
 
 ## 错误处理
 
-- 未找到plugin-dev → 提示先创建skill
+- 未找到 .claude/ → 提示先创建skill
 - YAML格式错误 → 报告具体问题
 - 无写入权限 → 报告错误
 

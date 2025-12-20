@@ -14,7 +14,7 @@ allowed-tools: Write, Read, Glob
 ### 1. 检查插件结构
 
 ```
-检查当前目录是否存在 *-dev/ 目录
+检查当前目录是否存在 .claude/ 目录
 ├─ 找到 → 继续到步骤3
 └─ 未找到 → 进入步骤2（同create-skill的自动初始化）
 ```
@@ -40,7 +40,7 @@ allowed-tools: Write, Read, Glob
 
 ### 4. 更新hooks.json
 
-1. 读取现有的 `{plugin-name}-dev/hooks/hooks.json`
+1. 读取现有的 `.claude/hooks/hooks.json`
    - 如果不存在，创建新文件
 2. 添加新hook到相应的事件数组
 3. 写回文件
@@ -66,7 +66,7 @@ allowed-tools: Write, Read, Glob
 
 ```
 ✅ Hook已添加到 {event}
-📁 位置: ./{plugin-name}-dev/hooks/hooks.json
+📁 位置: ./.claude/hooks/hooks.json
 🚀 该hook立即生效
 ```
 
@@ -75,10 +75,10 @@ allowed-tools: Write, Read, Glob
 用户: "添加一个auto-format hook"
 
 执行流程:
-1. 检查 *-dev/ → 找到 reddit-automation-dev/
+1. 检查 .claude/ → 找到
 2. 询问hook信息:
    - 事件: PostToolUse
    - 模式: Write|Edit
    - 命令: prettier --write $FILE
-3. 更新 reddit-automation-dev/hooks/hooks.json
+3. 更新 .claude/hooks/hooks.json
 4. 输出成功消息
