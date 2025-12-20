@@ -1,202 +1,303 @@
-# SkillForge - 命令创建工具
+# SkillForge 2.0
 
-自管理的 Claude Code 插件，用于命令的创建、更新和发布。
+完整的Claude Code插件开发生命周期管理系统
 
-## 功能特点
+## 概述
 
-- **create-skill** - 使用模板生成新命令
-- **update-skill** - 智能修改现有命令
-- **sync-marketplace** - 通过 Git 发布更改
-- **skillforge-knowledge** - 最佳实践知识库
+SkillForge是一个元插件，用于创建、管理和发布Claude Code插件。它提供自动初始化、即时测试和一键发布功能。
 
-## 安装方法
+## 核心特性
+
+### 零摩擦开发
+- 自然语言命令创建完整插件结构
+- 自动初始化，无需手动设置
+- 90%组件立即可测试（skills/agents/hooks）
+- 10%组件需要安装（commands）
+
+### 自动脚手架
+- 首次创建组件时自动初始化插件结构
+- 从init-plugin知识库读取标准结构
+- 一次性询问插件名称
+- 创建完整的目录和配置文件
+
+### 简化发布
+- 一条命令同步到marketplace
+- 自动验证插件结构
+- 自动化git操作（commit + push）
+- 智能生成commit消息
+
+## 安装
 
 ```bash
-# 添加本地 marketplace
-/plugin marketplace add /path/to/amazing-claude-code-plugins
+# 添加marketplace
+/plugin marketplace add <marketplace-url>
 
-# 安装 skillforge 插件
-/plugin install skillforge@plugin-market-marketplace
+# 安装SkillForge
+/plugin install skillforge
 ```
 
-## 使用方法
+## 快速开始
 
-只需描述你的需求：
-
-- "创建一个名为 reddit-upvote 的新命令"
-- "更新 reddit-comment 命令，添加延迟功能"
-- "同步我的更改到 marketplace"
-
-SkillForge 会自动处理所有操作。
-
-## 命令说明
-
-### /create-skill
-
-创建新的 Claude Code 命令。
-
-**使用场景**：
-- 需要添加新功能到插件
-- 想要快速搭建命令框架
-- 需要遵循最佳实践
-
-**工作流程**：
-1. 自动查找 marketplace 位置
-2. 选择目标插件
-3. 验证命令名称
-4. 从模板生成命令文件
-5. 提供后续步骤指导
-
-### /update-skill
-
-修改现有命令。
-
-**使用场景**：
-- 需要添加新功能
-- 修复错误或改进逻辑
-- 更新文档或示例
-
-**支持的更新类型**：
-- 添加执行步骤
-- 修改描述和配置
-- 更新工具权限
-- 添加示例和最佳实践
-
-### /sync-marketplace
-
-将更改发布到 Git。
-
-**使用场景**：
-- 完成命令开发后发布
-- 需要备份更改
-- 与团队共享更新
-
-**自动处理**：
-- 智能生成提交消息
-- 处理合并冲突
-- 推送到远程仓库
-
-### /skillforge-knowledge
-
-查看命令编写的最佳实践。
-
-**包含内容**：
-- 命令结构规范
-- 工具选择指南
-- 常见模式和示例
-- 错误处理建议
-- 性能优化技巧
-
-## 目录结构
+### 1. 首次设置
 
 ```
-skillforge/
+用户: "设置SkillForge"
+```
+
+SkillForge会询问：
+- 是否已有marketplace？
+- Marketplace路径
+- 作者信息
+
+配置保存到 `~/.skillforge-config`
+
+### 2. 创建第一个Skill
+
+```
+用户: "创建一个reddit-upvote skill"
+```
+
+SkillForge会：
+1. 检测无插件结构
+2. 询问插件名称
+3. 创建完整的 {plugin-name}-dev/ 结构
+4. 创建skill文件
+5. Skill立即可用
+
+### 3. 添加更多组件
+
+```
+用户: "创建reddit-comment skill"
+用户: "创建git-helper agent"
+用户: "添加auto-format hook"
+```
+
+所有组件立即可用，无需安装。
+
+### 4. 创建Command（需要安装）
+
+```
+用户: "创建status command"
+```
+
+SkillForge会显示安装步骤：
+```
+/plugin marketplace add ./{plugin-name}-dev
+/plugin install {plugin-name}-dev@local
+/{command-name}
+```
+
+### 5. 发布到Marketplace
+
+```
+用户: "同步到marketplace"
+```
+
+SkillForge会：
+1. 验证插件结构
+2. 询问版本号
+3. 复制到marketplace
+4. 自动commit和push
+
+## 组件说明
+
+### Skills (9个)
+
+| Skill | 描述 | 用户调用 |
+|-------|------|---------|
+| global-setup | 配置marketplace | 是 |
+| init-plugin | 插件结构知识库 | 否（仅供引用） |
+| create-skill | 创建skill | 是 |
+| create-agent | 创建agent | 是 |
+| create-command | 创建command | 是 |
+| create-hook | 创建hook | 是 |
+| update-skill | 更新skill | 是 |
+| update-agent | 更新agent | 是 |
+| sync-to-marketplace | 发布插件 | 是 |
+
+### Agents (2个)
+
+| Agent | 描述 | 调用方式 |
+|-------|------|---------|
+| workspace-validator | 验证插件结构 | 由sync-to-marketplace调用 |
+| marketplace-publisher | 执行git操作 | 由sync-to-marketplace调用 |
+
+## 插件结构
+
+SkillForge创建的插件结构：
+
+```
+{plugin-name}-dev/
 ├── .claude-plugin/
-│   └── plugin.json                    # 插件配置
-├── commands/
-│   ├── create-skill.md                # 创建命令
-│   ├── update-skill.md                # 更新命令
-│   ├── sync-marketplace.md            # 同步命令
-│   ├── skillforge-knowledge.md        # 知识库
-│   └── create-skill/
-│       ├── scripts/
-│       │   └── find-marketplace.sh    # 查找 marketplace 脚本
-│       └── templates/
-│           └── command-template.md    # 命令模板
-└── README.md                          # 本文件
+│   └── plugin.json          # 插件元数据
+├── skills/                  # 立即可用
+│   └── {skill-name}/
+│       └── SKILL.md
+├── agents/                  # 立即可用
+│   └── {agent-name}.md
+├── commands/                # 需要安装
+│   └── {command-name}.md
+├── hooks/                   # 立即可用
+│   └── hooks.json
+├── .skillforge-meta        # SkillForge元数据
+├── .gitignore
+└── README.md
 ```
 
-## 要求
+## 工作流程示例
 
-- 项目和 marketplace 必须在同一父目录下
-- Marketplace 必须是 Git 仓库
-- 需要配置 Git 凭据以推送更改
+### 完整工作流：从零到发布
 
-## 最佳实践
+```
+# 步骤1: 设置SkillForge
+用户: "设置SkillForge"
+→ 配置marketplace路径和作者信息
 
-1. **命名规范**
-   - 使用小写字母和连字符
-   - 描述性且简洁
-   - 反映主要功能
+# 步骤2: 创建第一个skill（自动初始化插件）
+用户: "创建reddit-upvote skill"
+→ 询问插件名称: reddit-automation
+→ 创建完整插件结构
+→ 创建skill文件
+→ ✅ Skill立即可用
 
-2. **描述编写**
-   - 说明功能和使用场景
-   - 包含触发关键词
-   - 保持简洁明了
+# 步骤3: 添加更多组件
+用户: "创建reddit-comment skill"
+→ ✅ 立即可用
 
-3. **工具选择**
-   - 只请求必需的工具
-   - 考虑安全性
-   - 参考知识库指南
+用户: "创建git-helper agent"
+→ ✅ 立即可用
 
-4. **中文支持**
-   - 所有用户可见文本使用中文
-   - 保持技术术语准确性
-   - 代码注释使用中文
+用户: "添加PostToolUse hook"
+→ ✅ 立即生效
 
-## 示例工作流
+# 步骤4: 创建command（需要安装测试）
+用户: "创建status command"
+→ 显示安装步骤
+→ 用户手动安装测试
 
-### 创建新命令
+# 步骤5: 发布
+用户: "同步到marketplace"
+→ 验证结构
+→ 询问版本号
+→ 复制到marketplace
+→ Git commit + push
+→ ✅ 发布完成
+```
 
+## 设计原则
+
+### 1. 用户输入是神圣的
+- 完全按用户提供的内容使用
+- 不做自动修正或建议
+- 不添加"智能"或假设
+- 仅验证关键错误
+
+### 2. 自动脚手架
+- 用户永远不需要手动初始化
+- 需要时自动创建插件结构
+- 从init-plugin知识库引用
+- 对用户透明
+
+### 3. 即时反馈
+- Skills/agents/hooks: 立即工作
+- Commands: 清晰的安装说明
+- 验证: 详细的错误报告
+- Git操作: 显示commit hash
+
+### 4. 关注点分离
+- Skills: 用户面向的命令
+- Subagents: 复杂的隔离操作
+- Knowledge skills: 仅供引用
+- Scripts: 外部自动化
+
+### 5. 渐进式披露
+- 从简单开始（一个skill）
+- 自然增长（添加组件）
+- 准备好时发布（一条命令）
+- 无需前期承诺
+
+## 模板
+
+SkillForge包含以下模板：
+
+- `plugin.json` - 插件配置
+- `SKILL.md` - Skill模板
+- `agent.md` - Agent模板
+- `command.md` - Command模板
+- `hooks.json` - Hooks配置
+- `skillforge-meta.json` - 元数据
+- `gitignore-root` - 项目根.gitignore
+- `gitignore-plugin` - 插件.gitignore
+- `README.md` - 插件README
+
+## 脚本
+
+### create-marketplace.sh
+
+创建新的Claude Code插件marketplace。
+
+用法：
 ```bash
-# 1. 运行创建命令
-/create-skill
-
-# 2. 按提示输入信息
-命令名称: my-awesome-command
-描述: 执行某个很棒的功能
-工具: Read, Write, Bash
-
-# 3. 编辑生成的命令文件
-# 4. 测试命令
-# 5. 同步到 marketplace
-/sync-marketplace
+./scripts/create-marketplace.sh <路径> <名称> <所有者>
 ```
 
-### 更新现有命令
-
-```bash
-# 1. 运行更新命令
-/update-skill
-
-# 2. 指定要更新的命令
-命令名称: my-awesome-command
-
-# 3. 描述需要的更改
-添加错误处理和新的示例
-
-# 4. 同步更改
-/sync-marketplace
-```
+功能：
+- 创建marketplace目录结构
+- 初始化git仓库
+- 创建初始commit
+- 提供后续步骤指导
 
 ## 故障排除
 
-### Marketplace 未找到
+### 未找到marketplace配置
 
-确保：
-- 项目和 marketplace 在同一父目录下
-- Marketplace 包含 `.claude-plugin/marketplace.json`
-- 目录结构正确
+错误: "请先运行global-setup"
 
-### Git 推送失败
-
-检查：
-- Git 凭据是否配置
-- 远程仓库是否可访问
-- 是否有推送权限
-
-### 命令未生效
-
-尝试：
-```bash
-/plugin marketplace update
-/plugin uninstall skillforge
-/plugin install skillforge@plugin-market-marketplace
+解决:
+```
+用户: "设置SkillForge"
 ```
 
-## 版本
+### 验证失败
 
-当前版本：1.0.0
+SkillForge会显示详细的错误报告，包括：
+- 文件路径
+- 行号
+- 具体问题
+
+修复错误后重新同步。
+
+### Git推送失败
+
+常见原因：
+- 未配置git凭据
+- 无remote
+- 认证失败
+- 非快进推送
+
+SkillForge会显示具体错误和解决方案。
+
+### 未找到插件结构
+
+如果在错误的目录：
+```
+错误: "未找到plugin-dev。创建一个skill开始。"
+```
+
+解决: 创建任何组件，SkillForge会自动初始化。
+
+## 版本历史
+
+### 2.0.0 (当前)
+- 完全重构为skills架构
+- 添加自动脚手架
+- 添加subagents用于验证和发布
+- 改进模板系统
+- 添加全面的文档
+
+### 1.0.0
+- 初始版本
+- 基于commands的架构
 
 ## 许可
 

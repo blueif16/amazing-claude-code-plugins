@@ -1,10 +1,9 @@
 {
   "name": "skillforge",
-  "version": "1.0.0",
-  "description": "自管理插件系统，用于创建、更新和发布 Claude Code 命令",
+  "version": "2.0.0",
+  "description": "完整的Claude Code插件开发生命周期管理系统 - 创建、更新、发布插件",
   "author": {
-    "name": "SkillForge",
-    "email": "skillforge@example.com"
+    "name": "SkillForge Team"
   },
-  "keywords": ["skill", "plugin", "automation", "development", "中文"]
+  "keywords": ["skill", "plugin", "automation", "development", "marketplace", "中文"]
 }
