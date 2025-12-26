@@ -1,13 +1,15 @@
 {
-  "Stop": [
-    {
-      "matcher": "",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "echo '{\"event\": \"stop\", \"session\": \"'$TMUX_PANE'\", \"timestamp\": \"'$(date -Iseconds)'\"}' >> ~/.infistack/completion.log"
-        }
-      ]
-    }
-  ]
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"event\": \"stop\", \"session\": \"'$TMUX_PANE'\", \"timestamp\": \"'$(date -Iseconds)'\"}' >> ~/.infistack/completion.log"
+          }
+        ]
+      }
+    ]
+  }
 }
