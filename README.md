@@ -4,6 +4,83 @@
 
 ## 包含的插件
 
+### InfiStack
+
+自我改进的PRD执行系统，支持渐进式升级和并行处理。通过主协调器拆分PRD，在独立的tmux会话中并行执行，自动修复失败，智能升级到研究员或人工。
+
+**架构图:**
+
+```
+/init
+  │
+  ▼
+┌─────────────────────────────────────────────────┐
+│            MAIN COORDINATOR                      │
+│                                                  │
+│  prd-orchestrator ─→ execution-manager          │
+│       │                    │                     │
+│       ▼                    ▼                     │
+│  [mini-PRDs]         [spawn tmux+worktrees]     │
+└─────────────────────────────────────────────────┘
+                             │
+          ┌──────────────────┼──────────────────┐
+          ▼                  ▼                  ▼
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│ SUB COORDINATOR │ │ SUB COORDINATOR │ │ SUB COORDINATOR │
+│                 │ │                 │ │                 │
+│   fix-engine    │ │   fix-engine    │ │   fix-engine    │
+│       │         │ │       │         │ │       │         │
+│       ▼         │ │       ▼         │ │       ▼         │
+│   executor ◄──┐ │ │   executor      │ │   executor      │
+│       │       │ │ │       │         │ │       │         │
+│       ▼       │ │ │       ▼         │ │       ▼         │
+│   validator ──┘ │ │   validator     │ │   validator     │
+│    (≤3x)        │ │                 │ │                 │
+│       │         │ │                 │ │                 │
+│       ▼         │ │                 │ │                 │
+│ escalation-router│ │                 │ │                 │
+│    │       │    │ │                 │ │                 │
+│    ▼       ▼    │ │                 │ │                 │
+│researcher documenter                 │ │                 │
+└─────────────────┘ └─────────────────┘ └─────────────────┘
+```
+
+**功能特点:**
+- 🎯 智能拆分：自动分析PRD复杂度，决定整体执行或水平拆分
+- ⚡ 并行执行：使用git worktrees和tmux会话实现真正的并行处理
+- 🔄 自动修复：executor→validator循环，最多3次自动重试
+- 🧠 智能升级：失败后自动决策升级到研究员或人工
+- 📊 完整上下文：保留所有尝试历史和代码片段
+- 🇨🇳 中文支持：所有交互和文档都使用中文
+
+**核心组件:**
+
+*Skills (技能):*
+- `prd-orchestrator` - PRD解析和拆分策略
+- `execution-manager` - 并行执行管理（tmux + worktrees）
+- `fix-engine` - 修复循环引擎（executor→validator）
+- `escalation-router` - 升级路径决策（研究员 vs 人工）
+
+*Agents (代理):*
+- `executor` - 代码实现和修复
+- `validator` - 测试验证和结果报告
+- `researcher` - 深度研究和解决方案查找
+- `documenter` - 人工交接文档生成
+
+**使用方法:**
+
+```bash
+# 从PRD文件启动
+/init ./docs/feature-prd.md
+
+# 监控执行
+tmux ls                    # 查看所有会话
+tmux attach -t section-1   # 附加到特定部分
+
+# 查看完成日志
+tail -f ~/.infistack/completion.log
+```
+
 ### Beautify Commit
 
 美化 Git Commit 消息的中文工具，让你的提交记录更加优雅、规范或可爱！

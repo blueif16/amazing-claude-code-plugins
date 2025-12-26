@@ -1,0 +1,9 @@
+{
+  "name": "infistack",
+  "description": "自我改进的PRD执行系统，支持渐进式升级和并行处理",
+  "version": "1.0.0",
+  "author": {
+    "name": "Shiran"
+  },
+  "keywords": ["prd", "execution", "automation", "parallel", "escalation", "中文"]
+}
