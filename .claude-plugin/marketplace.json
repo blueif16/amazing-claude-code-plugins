@@ -23,6 +23,14 @@
       "version": "1.0.0",
       "category": "development",
       "tags": ["skill", "plugin", "automation", "development", "中文", "创建", "管理"]
+    },
+    {
+      "name": "infistack",
+      "source": "./infistack",
+      "description": "自我改进的PRD执行系统，支持渐进式升级和并行处理",
+      "version": "1.0.0",
+      "category": "automation",
+      "tags": ["prd", "execution", "automation", "parallel", "escalation", "中文"]
     }
   ]
 }
