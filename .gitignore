@@ -1,5 +1,5 @@
 # Claude Code local settings
-.claude/
+settings*.json
 
 # Node modules (if any)
 node_modules/
