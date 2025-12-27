@@ -37,13 +37,12 @@ docs/prds/reddit-bot/
 
 ## 拆分标准
 
-**默认行为：始终拆分并使用 tmux + worktree**
+**默认行为：始终创建目录结构和 sections，即使 PRD 很小**
 
-**例外情况（保持整体）：**
-- PRD 少于 50 行
-- 单一关注点（如修复一个 bug）
-- 无外部依赖
-- 以上三个条件必须同时满足
+拆分策略：
+- 复杂 PRD：拆分为多个 sections
+- 简单 PRD：创建单个 section
+- 无论大小，都必须创建完整的项目文件夹结构
 
 ## 输出格式
 
@@ -94,4 +93,11 @@ merge_status:
 **禁止:** src/payments/*, src/ui/*
 ```
 
-编排完成后交给execution-manager。
+## 完成流程
+
+编排完成后，立即将 meta.yaml 路径移交给 execution-manager。execution-manager 将：
+1. 为每个 section 创建 git worktree 和 tmux 会话
+2. 监控所有部分直到完成
+3. 自动调用 merge-resolver 合并结果
+
+prd-orchestrator 只负责规划，不执行具体实现。
