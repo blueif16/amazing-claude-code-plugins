@@ -22,7 +22,7 @@ allowed-tools:
 ### 第一步：检查并加载用户风格配置
 
 1. 尝试读取配置文件 `.claude/beautify-commit.local.md`
-2. 如果文件存在，从 YAML frontmatter 中读取 `style` 字段
+2. 如果文件存在，从 YAML frontmatter 中读取 `style` 字段和可选的 `customStyle` 字段
 3. 如果文件不存在或没有 style 配置：
    - 使用 AskUserQuestion 工具询问用户选择风格
    - 问题：「请选择你喜欢的 Commit 消息风格」
@@ -31,9 +31,15 @@ allowed-tools:
      - **详细** - 包含详细说明和影响范围的多行 commit
      - **简洁** - 简短精炼的一句话描述
      - **可爱** - 使用可爱 emoji 和二次元风格的语气
+     - **自定义** - 输入你自己的风格描述和示例
+   - 如果用户选择「自定义」：
+     - 再次使用 AskUserQuestion 询问用户输入自定义风格描述
+     - 问题：「请描述你想要的 commit 风格（可以包含示例）」
+     - 只提供一个文本输入选项，让用户输入多行文本
+     - 将自定义内容保存到配置文件的 `customStyle` 字段中
    - 将用户选择保存到 `.claude/beautify-commit.local.md` 文件中
 
-配置文件格式示例：
+配置文件格式示例（预设风格）：
 ```markdown
 ---
 style: normal
@@ -48,6 +54,24 @@ style: normal
 - detailed: 详细的多行 commit
 - concise: 简洁的一句话
 - cute: 可爱的二次元风格
+- custom: 自定义风格
+```
+
+配置文件格式示例（自定义风格）：
+```markdown
+---
+style: custom
+customStyle: |
+  我喜欢使用简短的英文动词开头，然后用中文描述。
+  示例：
+  - Add 用户登录功能
+  - Fix 购物车bug
+  - Update 文档说明
+---
+
+# Beautify Commit 配置
+
+当前风格：custom（自定义）
 ```
 
 ### 第二步：分析 Git 状态
@@ -59,71 +83,21 @@ style: normal
 3. `git branch --show-current` - 获取当前分支名
 4. `git log --oneline -10` - 查看最近 10 条 commit 消息，学习仓库的 commit 风格
 
-### 第三步：根据风格生成 Commit 消息
+### 第三步：加载风格模板并生成 Commit 消息
 
-根据用户配置的风格，生成对应的 commit 消息：
+1. **加载风格模板**：
+   - 如果 style 是预设风格（normal/detailed/concise/cute），读取对应的模板文件：
+     - `templates/normal.md` - 正常风格模板
+     - `templates/detailed.md` - 详细风格模板
+     - `templates/concise.md` - 简洁风格模板
+     - `templates/cute.md` - 可爱风格模板
+   - 如果 style 是 custom，使用配置文件中的 `customStyle` 字段内容
+   - 模板内容包含风格描述、格式规则和示例，用于指导 AI 生成符合该风格的 commit 消息
 
-#### 正常风格 (normal)
-- 使用 Conventional Commits 格式
-- 类型前缀：feat, fix, docs, style, refactor, test, chore, perf
-- 格式：`<type>: <description>`
-- 示例：
-  - `feat: 添加用户登录功能`
-  - `fix: 修复购物车计算错误`
-  - `docs: 更新 API 文档`
-
-#### 详细风格 (detailed)
-- 多行 commit 消息
-- 包含标题、详细说明和影响范围
-- 格式：
-  ```
-  <type>: <简短标题>
-
-  <详细说明变更内容和原因>
-
-  影响范围：<列出受影响的模块或功能>
-  ```
-- 示例：
-  ```
-  feat: 添加用户登录功能
-
-  实现了基于 JWT 的用户认证系统，包括登录、注册和密码重置功能。
-  使用 bcrypt 加密存储密码，确保用户数据安全。
-
-  影响范围：
-  - 用户认证模块
-  - API 路由
-  - 数据库 schema
-  ```
-
-#### 简洁风格 (concise)
-- 一句话精炼描述
-- 不使用类型前缀
-- 直接说明做了什么
-- 示例：
-  - `添加用户登录功能`
-  - `修复购物车计算错误`
-  - `优化数据库查询性能`
-
-#### 可爱风格 (cute)
-- 使用可爱的二次元风格 emoji
-- 语气活泼可爱，带有颜文字
-- 推荐 emoji（选择合适的，不要全部使用）：
-  - ✨ (sparkles) - 新功能
-  - 🔧 (wrench) - 修复
-  - 📝 (memo) - 文档
-  - 🎨 (art) - 样式/UI
-  - ⚡ (zap) - 性能优化
-  - 🌸 (cherry blossom) - 美化
-  - 💫 (dizzy) - 重构
-  - 🎀 (ribbon) - 装饰性改动
-  - 🌟 (glowing star) - 重要更新
-  - 🎪 (circus tent) - 测试
-- 示例：
-  - `✨ 哇！新增了超棒的登录功能呢~ (๑•̀ㅂ•́)و✧`
-  - `🔧 修好了购物车的小bug啦！(｡･ω･｡)ﾉ♡`
-  - `🌸 让界面变得更可爱了呢~ ✧*｡٩(ˊᗜˋ*)و✧*｡`
-  - `⚡ 性能提升！现在快得飞起~ ₍₍ ◝(●˙꒳˙●)◜ ₎₎`
+2. **生成 Commit 消息**：
+   - 根据加载的模板内容和 git 变更信息，生成符合该风格的 commit 消息
+   - 确保生成的消息遵循模板中的格式规则和示例风格
+   - 对于自定义风格，严格按照用户提供的风格描述和示例生成
 
 ### 第四步：执行 Commit
 
@@ -171,11 +145,12 @@ style: normal
 
 用户运行 `/beautify-commit` 后：
 
-1. 检查配置文件，如果不存在则询问风格偏好
-2. 并行获取 git 信息
-3. 分析变更内容
-4. 根据风格生成 commit 消息
-5. 执行 git add 和 git commit
-6. 显示 commit 结果
-7. 询问用户是否要推送到远程仓库
-8. 如果用户选择推送，则执行 git push 并显示结果
+1. 检查配置文件，如果不存在则询问风格偏好（包括自定义选项）
+2. 如果用户选择自定义风格，询问用户输入风格描述和示例
+3. 并行获取 git 信息
+4. 根据风格类型加载对应的模板文件或自定义风格内容
+5. 分析变更内容，根据模板生成 commit 消息
+6. 执行 git add 和 git commit
+7. 显示 commit 结果
+8. 询问用户是否要推送到远程仓库
+9. 如果用户选择推送，则执行 git push 并显示结果
