@@ -9,25 +9,34 @@ description: 从验收标准创建检查清单，编排executor→validator循�
 
 ## 职责
 
-1. 将验收标准转换为可执行检查清单
-2. 编排：executor → validator → (失败则重试)
-3. 跟踪尝试次数并累积失败上下文
-4. 超过最大重试次数时准备详细错误报告
+1. 读取 section_path 中的 mini-prd.md
+2. 将验收标准转换为 checklist.md（markdown 复选框格式）
+3. 编排：executor → validator → (失败则重试)
+4. 每次验证后更新 checklist.md 的复选框状态
+5. 更新 meta.yaml 中的进度摘要
+6. 跟踪尝试次数并累积失败上下文
+7. 超过最大重试次数时准备详细错误报告
 
 ## 检查清单创建
 
-从验收标准生成：
-```yaml
-checklist:
-  - id: check-1
-    description: "用户注册创建账户"
-    command: "npm test -- --grep 'registration'"
-    expected: "exit 0, 用户在数据库中"
-  - id: check-2
-    description: "无效邮箱被拒绝"
-    command: "npm test -- --grep 'validation'"
-    expected: "exit 0, 400响应"
+从 mini-prd.md 的验收标准生成 checklist.md（markdown 格式）：
+
+```markdown
+## 认证模块检查清单
+
+- [ ] 用户可以使用邮箱/密码注册
+- [ ] 登录时签发 JWT 令牌
+- [ ] 受保护路由拒绝无效令牌
+- [ ] 刷新令牌轮换正常工作
+
+**进度: 0/4**
 ```
+
+每次 validator 返回结果后，更新对应的复选框：
+- 通过的检查项：`- [x]`
+- 失败的检查项：`- [ ]`
+
+同时更新底部的进度摘要。
 
 ## 执行循环
 
@@ -37,13 +46,21 @@ max_attempts = 3
 
 while attempt < max_attempts:
     if attempt == 0:
-        call executor(task: "implement", prd: mini_prd)
+        call executor(task: "implement", section_path: section_path)
     else:
         call executor(task: "fix", failures: last_failures, previous_attempts: history)
 
-    result = call validator(checklist: checklist)
+    result = call validator(section_path: section_path)
 
-    if result.passed:
+    # 更新 checklist.md
+    update_checklist(result.checkbox_states)
+
+    # 更新 meta.yaml 进度
+    progress = f"{result.passed_count}/{result.total_count}"
+    update_meta_yaml(section_id, progress: progress)
+
+    if result.all_passed:
+        update_meta_yaml(section_id, status: "completed")
         return SUCCESS
 
     history.append({
