@@ -60,6 +60,15 @@ for section in $sections; do
 done
 ```
 
+## 强制 Worktree 规则
+
+所有部分必须在各自的 worktree 中执行，无例外。
+
+生成前验证：
+1. 验证 worktree 存在：`git worktree list | grep {section-id}`
+2. 验证 tmux 会话在 worktree 中运行：`-c ../worktrees/{section-id}`
+3. 永远不要在主仓库中为部分工作生成 Claude
+
 ## 监控循环 (REQUIRED)
 
 生成所有会话后，**必须继续监控**。不要交给人工处理。
