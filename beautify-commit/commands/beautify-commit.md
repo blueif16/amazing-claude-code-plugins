@@ -30,7 +30,7 @@ allowed-tools:
      - **正常** - 标准的 Conventional Commits 格式（feat/fix/docs 等）
      - **详细** - 包含详细说明和影响范围的多行 commit
      - **简洁** - 简短精炼的一句话描述
-     - **可爱** - 使用可爱 emoji 和二次元风格的语气
+     - **可爱** - 使用颜文字和二次元风格的语气
      - **自定义** - 输入你自己的风格描述和示例
    - 如果用户选择「自定义」：
      - 再次使用 AskUserQuestion 询问用户输入自定义风格描述
@@ -106,7 +106,7 @@ customStyle: |
    ```
    <生成的 commit 消息>
 
-   🤖 Generated with Claude Code (https://claude.com/claude-code)
+   ◉ Generated with Claude Code (https://claude.com/claude-code)
    Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
    ```
 3. 使用 `git status` 验证 commit 成功
@@ -134,7 +134,7 @@ customStyle: |
    git commit -m "$(cat <<'EOF'
    <commit 消息内容>
 
-   🤖 Generated with Claude Code (https://claude.com/claude-code)
+   ◉ Generated with Claude Code (https://claude.com/claude-code)
    Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
    EOF
    )"

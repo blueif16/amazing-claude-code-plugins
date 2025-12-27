@@ -1,0 +1,10 @@
+{
+  "name": "handy-tools-for-dev",
+  "version": "0.1.0",
+  "description": "开发者常用工具集，包含插件缓存刷新等实用功能",
+  "author": {
+    "name": "User",
+    "email": "user@example.com"
+  },
+  "keywords": ["development", "tools", "plugin", "cache", "中文", "utility"]
+}
