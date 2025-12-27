@@ -20,6 +20,22 @@ description: 使用git worktrees为并行子协调器生成和管理tmux会话�
 6. 监控完成信号
 7. 完成/失败时清理
 
+## 重要约束
+
+**主协调器代码修复规则:**
+
+当需要修复主协调器（当前 agent 所在环境）中的代码时，**必须先询问人工**。
+
+主协调器的职责范围：
+- ✅ 协调和生成 tmux 会话
+- ✅ 管理 git worktree
+- ✅ 检查各部分进度
+- ✅ 简洁地调用 skills
+- ❌ 不应思考具体执行计划
+- ❌ 不应直接修改业务代码
+
+所有具体的执行计划和代码实现应由子协调器在各自的 tmux 会话中完成。
+
 ## 生成模式
 
 ```bash
@@ -43,6 +59,39 @@ for section in $sections; do
   yq -i ".sections.${section}.status = \"in_progress\"" meta.yaml
 done
 ```
+
+## 监控循环 (REQUIRED)
+
+生成所有会话后，**必须继续监控**。不要交给人工处理。
+
+```bash
+# 检查状态文件
+for section in worktrees/*/; do
+  status=$(cat "$section/.task/status.txt" 2>/dev/null || echo "WORKING")
+  echo "$(basename $section): $status"
+done
+
+# 查看实时输出
+tmux capture-pane -t {section-id} -p | tail -20
+```
+
+**每 30-60 秒检查每个会话：**
+
+1. **WORKING** → 继续监控
+2. **COMPLETE** → 合并分支、清理、记录成功
+3. **STUCK** → 读取 error-report.md，决定：通过 `tmux send-keys` 帮助或升级到人工
+4. **5分钟以上无输出** → 检查是否卡住，发送提示：`tmux send-keys -t {section-id} "状态更新？" Enter`
+
+**对问题做出反应：**
+- 除非非常严重需要人工干预，否则询问人工。如果 tmux 需要任何权限或询问，通常只需同意并指向你认为正确的选择
+- 如果需要外部信息 → 获取并注入：`tmux send-keys -t {section-id} "额外上下文：..." Enter`
+
+**仅在以下情况停止：**
+- 所有部分 COMPLETE → 向人工报告摘要
+- 部分需要 HUMAN 干预 → 暂停该部分，继续其他部分
+- 多个部分出现致命错误 → 升级并提供完整报告
+
+不要只是生成后就离开。你负责监控循环直到完成。
 
 ## 监控
 
