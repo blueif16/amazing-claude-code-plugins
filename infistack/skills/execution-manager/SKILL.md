@@ -35,11 +35,9 @@ for section in $sections; do
   # 创建 worktree
   git worktree add ../worktrees/${section} -b ${branch}
 
-  # 创建 tmux 会话
-  tmux new-session -d -s ${section} -c ../worktrees/${section}
-
-  # 初始化子协调器，传递 section_path
-  tmux send-keys -t ${section} "claude --resume --context section_path=${section_path}" Enter
+  # 创建 tmux 会话并初始化子协调器
+  tmux new-session -d -s ${section} -c ../worktrees/${section} \
+    claude "You are Sub Coordinator for ${section}. Read fix-engine skill. Task files in .task/ directory. Begin."
 
   # 更新 meta.yaml 状态
   yq -i ".sections.${section}.status = \"in_progress\"" meta.yaml
@@ -61,4 +59,44 @@ done
 tmux kill-session -t {section-id}
 git worktree remove ../worktrees/{section-id}
 git branch -d {section-id}  # 仅在合并后
+```
+
+## 主协调器必备命令
+
+### tmux 会话管理
+
+```bash
+# 列出所有工作会话
+tmux ls
+
+# 查看工作输出（最后50行，非阻塞）
+tmux capture-pane -t {section-id} -p | tail -50
+
+# 向工作会话发送后续指令
+tmux send-keys -t {section-id} "Also handle edge case X" Enter
+
+# 附加到会话实时观察（Ctrl+B D 分离）
+tmux attach -t {section-id}
+
+# 终止卡住的工作会话
+tmux kill-session -t {section-id}
+```
+
+### git worktree 管理
+
+```bash
+# 创建带新分支的 worktree
+git worktree add ../worktrees/{section-id} -b {section-id}
+
+# 列出所有 worktrees
+git worktree list
+
+# 删除 worktree（合并后）
+git worktree remove ../worktrees/{section-id}
+
+# 清理过期的 worktree 引用
+git worktree prune
+
+# 从主分支合并完成的部分
+git merge {section-id} --no-ff -m "Merge {section-id}"
 ```

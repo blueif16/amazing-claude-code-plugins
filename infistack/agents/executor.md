@@ -1,6 +1,6 @@
 ---
 name: executor
-description: 实现代码或应用修复。由子协调器的fix-engine调用。从不协调，只执行。
+description: MUST BE USED to implement code from PRDs. Use proactively when implementation needed. 实现代码或应用修复。由子协调器的fix-engine调用。从不协调，只执行。
 tools: Read, Write, Edit, Bash, Glob, Grep
 model: sonnet
 ---

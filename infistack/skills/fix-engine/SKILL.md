@@ -46,11 +46,13 @@ max_attempts = 3
 
 while attempt < max_attempts:
     if attempt == 0:
-        call executor(task: "implement", section_path: section_path)
+        # 使用 executor agent 实现 .task/mini-prd.md
+        call executor agent to implement .task/mini-prd.md
     else:
         call executor(task: "fix", failures: last_failures, previous_attempts: history)
 
-    result = call validator(section_path: section_path)
+    # 使用 validator agent 检查 .task/checklist.md
+    result = call validator agent to check against .task/checklist.md
 
     # 更新 checklist.md
     update_checklist(result.checkbox_states)

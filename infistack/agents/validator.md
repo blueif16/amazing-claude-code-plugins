@@ -1,6 +1,6 @@
 ---
 name: validator
-description: 对实现执行检查清单。返回通过/失败及代码上下文。在executor完成后调用。
+description: Use proactively after implementation. 对实现执行检查清单。返回通过/失败及代码上下文。在executor完成后调用。
 tools: Read, Bash, Glob, Grep
 model: sonnet
 ---
