@@ -34,6 +34,29 @@ git pull origin main
 completed_sections=$(yq '.sections | to_entries | map(select(.value.status == "completed")) | .[].key' meta.yaml)
 blocked_sections=$(yq '.sections | to_entries | map(select(.value.status == "blocked")) | .[].key' meta.yaml)
 
+# 合并前先决条件检查
+for section in $completed_sections; do
+  branch="${project_name}/${section}"
+
+  # 检查分支是否有提交（不仅仅是暂存的更改）
+  if ! git log main..${branch} --oneline | grep -q .; then
+    echo "⚠️ $section: 分支没有提交，跳过"
+    continue
+  fi
+
+  # 验证没有 .task/ 文件将被合并
+  if git diff main..${branch} --name-only | grep -q "^\.task/"; then
+    echo "⚠️ $section: 包含 .task/ 文件，需要清理"
+    continue
+  fi
+done
+
+# 验证主分支状态干净
+if ! git status --porcelain | grep -q "^$"; then
+  echo "⚠️ 主分支有未提交的更改，先清理"
+  exit 1
+fi
+
 # 如果有阻塞的部分，询问人工
 if [ -n "$blocked_sections" ]; then
   echo "以下部分被阻塞: $blocked_sections"
@@ -62,8 +85,8 @@ for section in $completed_sections; do
   # 预览变更
   git diff main..${branch} --stat
 
-  # 尝试合并
-  if git merge ${branch} --no-ff -m "Merge ${section}: auto-merged by InfiStack"; then
+  # 尝试合并（使用 patience 算法获得更好的差异）
+  if git merge -X patience ${branch} --no-ff -m "Merge ${section}: auto-merged by InfiStack"; then
     echo "✅ $section 合并成功"
     merge_success+=("$section")
 
@@ -105,7 +128,9 @@ for section in $completed_sections; do
 done
 ```
 
-### Phase 3: 验证集成
+### Phase 3: 验证集成（必需）
+
+合并所有部分后必须进行验证：
 
 ```bash
 # 只有在至少有一个成功合并时才运行测试
@@ -122,7 +147,10 @@ if [ ${#merge_success[@]} -gt 0 ]; then
   fi
 
   if [ "$test_failed" = true ]; then
-    echo "⚠️ 测试失败，可能需要回滚或修复"
+    echo "⚠️ 集成测试在合并后失败"
+    # 识别哪个合并导致失败（二分或选择性回滚）
+    git log --oneline -5
+    # 向人工报告失败详情
     yq -i ".test_status = \"failed\"" meta.yaml
   else
     echo "✅ 所有测试通过"
@@ -189,6 +217,17 @@ cat execution-report.md
 
 ## 自动冲突解决策略
 
+### 通用解决策略
+
+#### 合并前尝试语义合并
+```bash
+# 使用更好的差异算法
+git merge -X patience {branch}
+
+# 针对特定文件类型的策略
+git checkout --theirs .task/  # .task 文件始终采用他们的版本
+```
+
 ### 可自动解决的冲突类型
 
 1. **package.json 依赖冲突**
@@ -225,6 +264,13 @@ auto_resolve_conflicts() {
 
   for file in $conflict_files; do
     case "$file" in
+      .task/*)
+        # .task 文件：始终采用他们的版本
+        echo "自动解决 .task/ 冲突: $file"
+        git checkout --theirs $file
+        git add $file
+        ;;
+
       package.json)
         # 使用 jq 合并依赖
         echo "自动解决 package.json 依赖冲突..."

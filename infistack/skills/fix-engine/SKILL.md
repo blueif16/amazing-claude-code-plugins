@@ -62,6 +62,16 @@ while attempt < max_attempts:
     update_meta_yaml(section_id, progress: progress)
 
     if result.all_passed:
+        # 完成协议：提交所有更改
+        git add -A
+        git commit -m "${section_name}: ${summary}
+
+        - ${change_1}
+        - ${change_2}
+
+        🤖 Generated with InfiStack"
+
+        # 更新状态文件（最后一步）
         update_meta_yaml(section_id, status: "completed")
         return SUCCESS
 
@@ -76,6 +86,23 @@ while attempt < max_attempts:
 
 return ESCALATE(error_report: history)
 ```
+
+## 完成协议
+
+当所有检查清单项通过时：
+
+1. 暂存所有更改：`git add -A`
+2. 提交并附带结构化消息：
+```bash
+git commit -m "${section_name}: ${summary}
+
+- ${change_1}
+- ${change_2}
+
+🤖 Generated with InfiStack"
+```
+3. 写入 COMPLETE 到状态文件
+4. 只有在此之后才发出完成信号
 
 ## 错误报告格式
 

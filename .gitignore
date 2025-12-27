@@ -11,3 +11,8 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# InfiStack runtime files
+.task/
+.infistack/
+*.status
