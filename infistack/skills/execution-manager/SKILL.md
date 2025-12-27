@@ -65,38 +65,145 @@ done
 生成所有会话后，**必须继续监控**。不要交给人工处理。
 
 ```bash
-# 检查状态文件
-for section in worktrees/*/; do
-  status=$(cat "$section/.task/status.txt" 2>/dev/null || echo "WORKING")
-  echo "$(basename $section): $status"
-done
+# 监控状态变量
+all_done=false
+check_interval=30  # 秒
 
-# 查看实时输出
-tmux capture-pane -t {section-id} -p | tail -20
+while [ "$all_done" = false ]; do
+  echo "检查所有部分状态..."
+
+  completed_count=0
+  blocked_count=0
+  in_progress_count=0
+  total_sections=$(yq '.sections | length' meta.yaml)
+
+  # 检查每个部分的状态
+  for section in $(yq '.sections | keys | .[]' meta.yaml); do
+    status=$(yq ".sections.${section}.status" meta.yaml)
+
+    case "$status" in
+      completed)
+        ((completed_count++))
+        echo "✅ $section: COMPLETE"
+        ;;
+      blocked)
+        ((blocked_count++))
+        echo "❌ $section: BLOCKED"
+        ;;
+      in_progress)
+        ((in_progress_count++))
+        # 检查 tmux 会话是否还在运行
+        if ! tmux has-session -t "$section" 2>/dev/null; then
+          echo "⚠️ $section: tmux 会话异常退出"
+          yq -i ".sections.${section}.status = \"blocked\"" meta.yaml
+        else
+          # 检查最近输出
+          last_output=$(tmux capture-pane -t "$section" -p | tail -20)
+          echo "🔄 $section: WORKING"
+        fi
+        ;;
+    esac
+  done
+
+  # 检查是否所有部分都完成或阻塞
+  if [ $((completed_count + blocked_count)) -eq $total_sections ]; then
+    all_done=true
+    echo ""
+    echo "所有部分已完成或阻塞，准备合并..."
+    echo "- 已完成: $completed_count"
+    echo "- 已阻塞: $blocked_count"
+    echo ""
+
+    # 自动调用 merge-resolver
+    if [ $completed_count -gt 0 ]; then
+      echo "调用 merge-resolver 处理已完成的部分..."
+      # 这里 Claude 会调用 merge-resolver skill
+      # 人工只需在 merge-resolver 完成后看到最终报告
+    else
+      echo "没有已完成的部分可以合并"
+      echo "所有部分都被阻塞，需要人工干预"
+    fi
+  else
+    echo ""
+    echo "状态摘要: $completed_count 完成, $in_progress_count 进行中, $blocked_count 阻塞"
+    echo "等待 ${check_interval} 秒后再次检查..."
+    sleep $check_interval
+  fi
+done
 ```
+
+### 监控期间的响应策略
 
 **每 30-60 秒检查每个会话：**
 
 1. **WORKING** → 继续监控
-2. **COMPLETE** → 合并分支、清理、记录成功
-3. **STUCK** → 读取 error-report.md，决定：通过 `tmux send-keys` 帮助或升级到人工
-4. **5分钟以上无输出** → 检查是否卡住，发送提示：`tmux send-keys -t {section-id} "状态更新？" Enter`
+2. **COMPLETE** → 更新 meta.yaml，继续监控其他部分
+3. **STUCK** → 读取 error-report.md，决定：
+   - 通过 `tmux send-keys` 提供额外上下文
+   - 或升级到人工（标记为 blocked）
+4. **5分钟以上无输出** → 检查是否卡住，发送提示：
+   ```bash
+   tmux send-keys -t {section-id} "状态更新？" Enter
+   ```
 
 **对问题做出反应：**
-- 除非非常严重需要人工干预，否则询问人工。如果 tmux 需要任何权限或询问，通常只需同意并指向你认为正确的选择
-- 如果需要外部信息 → 获取并注入：`tmux send-keys -t {section-id} "额外上下文：..." Enter`
+- 如果 tmux 需要任何权限或询问，通常只需同意并指向正确的选择
+- 如果需要外部信息 → 获取并注入：
+  ```bash
+  tmux send-keys -t {section-id} "额外上下文：..." Enter
+  ```
 
-**仅在以下情况停止：**
-- 所有部分 COMPLETE → 向人工报告摘要
-- 部分需要 HUMAN 干预 → 暂停该部分，继续其他部分
+**仅在以下情况停止监控：**
+- 所有部分 COMPLETE 或 BLOCKED → 调用 merge-resolver
+- merge-resolver 完成 → 向人工报告最终摘要
 - 多个部分出现致命错误 → 升级并提供完整报告
 
-不要只是生成后就离开。你负责监控循环直到完成。
+不要只是生成后就离开。你负责监控循环直到所有部分完成并调用 merge-resolver。
 
-## 监控
+## 完成触发器
+
+当监控循环检测到所有部分都是 `completed` 或 `blocked` 状态时：
+
+1. **如果有任何 blocked 部分：**
+   - 报告阻塞的部分给人工
+   - 询问："是否继续合并已完成的部分? (y/n)"
+   - 如果 30 秒内无响应，默认为 YES
+
+2. **调用 merge-resolver：**
+   - 传递所有 `completed` 部分的列表
+   - merge-resolver 会处理合并、冲突解决、测试和报告
+
+3. **merge-resolver 返回后：**
+   - 如果所有合并成功且测试通过 → 报告成功
+   - 如果有冲突 → 报告冲突文件和解决步骤
+   - 如果测试失败 → 报告失败原因
+
+4. **只有在 merge-resolver 完成后才返回控制权给人工**
+
+## 永不提前退出原则
+
+execution-manager 的职责是完整的端到端执行管理：
+
+- ✅ 生成所有 tmux 会话
+- ✅ 监控所有部分直到完成
+- ✅ 自动调用 merge-resolver
+- ✅ 等待 merge-resolver 完成
+- ✅ 向人工报告最终结果
+
+**不要：**
+- ❌ 生成会话后就返回
+- ❌ 部分完成时就返回
+- ❌ 让人工手动触发合并
+- ❌ 在 merge-resolver 运行时返回
+
+**人工只应看到：**
+1. 初始 PRD 输入
+2. 最终执行报告（成功或需要处理的冲突）
+
+## 监控状态说明
 
 定期检查 meta.yaml 中各部分的状态：
-- `completed` - 部分完成，触发 merge-resolver
+- `completed` - 部分完成，等待所有部分完成后触发 merge-resolver
 - `blocked` - 已升级到人工，暂停该部分
 - `in_progress` - 继续监控
 
