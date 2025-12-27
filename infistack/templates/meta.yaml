@@ -1,0 +1,17 @@
+project: project-name
+created: 2025-01-15T10:00:00Z
+original_prd: ./original.md
+status: in_progress  # in_progress | completed | blocked
+
+sections:
+  section-1:
+    status: pending  # pending | in_progress | completed | blocked
+    branch: project-name/section-1
+    progress: "0/0"
+    current_attempt: 0
+    files_created: []
+
+merge_status:
+  completed: []
+  pending: []
+  conflicts: []
