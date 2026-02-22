@@ -1,11 +1,5 @@
 {
   "name": "godag",
   "version": "2.0.0",
-  "description": "Intent-driven agent orchestration. Say what you want, get a coordinated team.",
-  "skills": ["skills/intent-router.md"],
-  "commands": [
-    "commands/go.md",
-    "commands/report.md"
-  ],
-  "keywords": ["agent-teams", "orchestration", "dag", "automation", "中文"]
+  "description": "Intent-driven agent orchestration. Say what you want, get a coordinated team."
 }
