@@ -69,12 +69,15 @@ IMPORTANT: 大多数日常工作是 Level 1-2。不要过度工程化。Agent Te
         "id": "T1",
         "title": "简短描述",
         "type": "implement|test|review|research|config",
-        "scope": "涉及的文件/模块",
+        "scope": ["涉及的文件/模块1", "涉及的文件/模块2"],
         "blocked_by": [],
-        "acceptance": "怎么验证这个 task 做对了（具体的命令或检查）",
+        "acceptance": "怎么验证这个 task 做对了（具体的命令或检查）2>&1 | tail -3",
         "estimated_complexity": "small|medium|large",
         "agent_role": "这个 agent 的专业角色描述"
       }
+    ],
+    "edges": [
+      ["T1", "T2"]
     ]
   }
 }
@@ -87,6 +90,18 @@ IMPORTANT: 大多数日常工作是 Level 1-2。不要过度工程化。Agent Te
 3. **尽量减少依赖。** 更多的独立 task = 更多的并行 = 更快完成。只在真正有数据/逻辑依赖时才添加 blocked_by。
 4. **每个 task 应该是一个 teammate 能独立完成的。** 如果一个 task 需要两个 teammate 协作才能完成，说明拆得不对。
 5. **总是包含一个 integration/review task 在最后。** 这个 task blocked_by 所有其他 task，负责验证整体集成。
+6. **acceptance 命令必须限制输出。** 所有 acceptance 命令应追加 `2>&1 | tail -N`（N 通常 3-5）来限制输出长度。大量输出会污染 agent 的 context window。如果原始命令已经输出简洁（如 `echo OK`），可以不加。
+7. **Teammates 上限 5 个。** 超过 5 个 teammate 的协调开销大于并行收益。如果 DAG 有超过 5 个并行 task，合并相近的 task 或分阶段执行。
+
+### `edges` 与 `blocked_by` 的关系
+
+`blocked_by` 存在于每个 task 定义里，是给 Claude 推理用的。`edges` 是同一信息的反向表示 `[from, to]`，dashboard 可以直接拿来渲染有向边。两者由 `/go` 在生成 DAG 时同步写入，保证一致。
+
+### `scope` 字段
+
+scope 是字符串数组，列出该 task 涉及的文件或目录。用于：
+- Dashboard 展示每个 task 涉及的文件
+- 检测两个 in_progress task 的文件冲突
 
 ### 典型 DAG 模式
 
@@ -134,6 +149,10 @@ T3: Approach C Research ──┘
 ```
 你是 [角色名]，负责 [具体职责]。
 
+## 前置任务完成情况
+[对已完成的前置 task，从 state.json 的 tasks.TX.summary 注入上下文]
+T1 (done): [summary]
+
 ## 你的任务
 [task title]
 
@@ -144,6 +163,9 @@ T3: Approach C Research ──┘
 ## 完成标准
 当以下条件全部满足时，标记任务完成：
 [acceptance criteria]
+
+## 完成后
+在 .godag/state.json 中更新你的 task 状态，写入 summary（2-3 句描述你做了什么）和 files_changed。
 
 ## 依赖
 [如果有 blocked_by] 等待以下任务完成后再开始：[blocked tasks]

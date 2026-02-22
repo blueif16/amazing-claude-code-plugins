@@ -1,8 +1,8 @@
-# GoDag (InfiStack v2)
+# GoDag
 
 从一句话到一个协调好的 agent 团队。
 
-GoDag 建立在 Claude Code Agent Teams 之上的智能编排层。
+GoDag 是建立在 Claude Code Agent Teams 之上的智能编排层。
 你说一句话，它帮你规划任务、拆解依赖、启动团队、追踪进度。
 
 ## 安装
@@ -40,6 +40,9 @@ GoDag 建立在 Claude Code Agent Teams 之上的智能编排层。
 
 # 简要状态
 /report short
+
+# 启动 dashboard 回顾已完成的执行
+/report --dashboard
 ```
 
 ## 工作原理
@@ -50,6 +53,18 @@ GoDag 建立在 Claude Code Agent Teams 之上的智能编排层。
 4. **启动团队** — 用 Agent Teams 原生能力 spawn teammates
 5. **追踪进度** — 结构化报告，置信度评估，风险提示
 
+## Dashboard
+
+GoDag 内置可视化 Dashboard。当启动 Level 2-3 任务时，GoDag 会问你是否要开启。
+
+开启后，在浏览器中实时查看：
+- DAG 拓扑图（节点颜色 = 任务状态）
+- 每个 agent 正在做什么
+- 整体进度和置信度
+- 活动事件流
+
+Dashboard 是纯本地的（localhost），不需要账号，不上传任何数据。
+
 ## 设计哲学
 
 - **不造轮子：** tmux、worktree、task claiming 全用 Agent Teams 原生能力
@@ -59,9 +74,17 @@ GoDag 建立在 Claude Code Agent Teams 之上的智能编排层。
 
 ## 状态文件
 
-GoDag 在项目的 `.tasks/` 目录下维护状态：
+GoDag 在项目的 `.godag/` 目录下维护状态：
 
-- `.tasks/state.json` — 当前执行的任务状态
-- `.tasks/backlog.json` — 跨 session 的待办列表
+- `.godag/state.json` — 当前执行的任务状态（git-tracked，支持 session 恢复）
+- `.godag/backlog.json` — 跨 session 的待办列表（git-tracked）
+- `.godag/plan.md` — 人类可读的执行计划快照（git-tracked）
+- `.godag/log.jsonl` — 事件流，供 dashboard 时间线使用（不 git-track）
+- `.godag/dashboard.html` — dashboard 前端（不 git-track，从插件复制）
 
-这些文件是 git-tracked 的，session 崩溃后可以用 `/go continue` 恢复。
+建议在项目 `.gitignore` 中添加：
+```gitignore
+.godag/log.jsonl
+.godag/dashboard.html
+.godag/.server.pid
+```
