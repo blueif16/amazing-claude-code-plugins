@@ -8,7 +8,7 @@ allowed-tools: ["Bash", "Read", "Task", "Teammate"]
 
 ## 执行逻辑
 
-1. 读取 `.tasks/state.json`
+1. 读取 `.godag/state.json`
 2. 如果 Agent Teams 正在运行：查询 shared task list 获取实时状态
 3. 如果已完成或 session 已结束：从 state.json 读取最终状态
 4. 生成以下格式的报告
@@ -89,3 +89,25 @@ allowed-tools: ["Bash", "Read", "Task", "Teammate"]
 ```
 📊 [项目名]: X/Y done (百分比%) | 🟢 高置信度
 ```
+
+## Dashboard 提示
+
+如果 `.godag/state.json` 中 `dashboard.server_pid` 对应的进程还活着，在报告末尾追加：
+
+```
+📊 Dashboard running: http://localhost:[port]
+```
+
+## 启动 Dashboard 回顾
+
+```
+/report --dashboard
+```
+
+如果当前没有运行 dashboard server，启动一个并输出 URL：
+1. 检查 `.godag/state.json` 是否存在
+2. 检查 `.godag/dashboard.html` 是否存在，不存在则从插件复制
+3. 启动 HTTP server（同 `/go` 的启动逻辑）
+4. 输出：`📊 Dashboard: http://localhost:[port]`
+
+用于执行已完成后，用户想回顾可视化结果的场景。

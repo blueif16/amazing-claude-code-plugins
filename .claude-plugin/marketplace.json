@@ -43,10 +43,10 @@
     {
       "name": "godag",
       "source": "./GoDag",
-      "description": "Intent-driven agent orchestration. Say what you want, get a coordinated team.",
-      "version": "2.0.0",
+      "description": "From one sentence to a coordinated agent team. Intent → DAG → Execute → Visualize.",
+      "version": "2.1.0",
       "category": "automation",
-      "tags": ["agent-teams", "orchestration", "dag", "automation", "中文"]
+      "tags": ["agent-teams", "orchestration", "dag", "automation", "dashboard", "中文"]
     }
   ]
 }
