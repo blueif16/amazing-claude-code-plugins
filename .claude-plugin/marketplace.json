@@ -39,6 +39,14 @@
       "version": "0.1.0",
       "category": "utility",
       "tags": ["development", "tools", "plugin", "cache", "中文", "utility"]
+    },
+    {
+      "name": "godag",
+      "source": "./GoDag",
+      "description": "Intent-driven agent orchestration. Say what you want, get a coordinated team.",
+      "version": "2.0.0",
+      "category": "automation",
+      "tags": ["agent-teams", "orchestration", "dag", "automation", "中文"]
     }
   ]
 }

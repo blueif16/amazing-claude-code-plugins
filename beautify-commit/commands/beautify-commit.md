@@ -87,11 +87,12 @@ customStyle: |
 
 1. **加载风格模板（必须先读取文件）**：
    - **重要**：必须使用 Read 工具读取模板文件，不要自己想象或定义风格规则
+   - 模板文件位于当前命令文件的相对路径 `../templates/` 目录中
    - 如果 style 是预设风格（normal/detailed/concise/cute），**必须先读取**对应的模板文件：
-     - `templates/normal.md` - 正常风格模板
-     - `templates/detailed.md` - 详细风格模板
-     - `templates/concise.md` - 简洁风格模板
-     - `templates/cute.md` - 可爱风格模板
+     - `../templates/normal.md` - 正常风格模板
+     - `../templates/detailed.md` - 详细风格模板
+     - `../templates/concise.md` - 简洁风格模板
+     - `../templates/cute.md` - 可爱风格模板
    - 如果 style 是 custom，使用配置文件中的 `customStyle` 字段内容
    - **模板文件是风格的唯一定义来源**
 
