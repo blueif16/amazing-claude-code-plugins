@@ -81,6 +81,29 @@ allowed-tools: ["Bash", "Read", "Write", "Task", "Teammate"]
 - **用户说 n / 不 / 取消：** 终止
 - **用户提出调整：** 根据反馈修改 DAG 后再次确认
 
+## Agent Assignment
+
+When spawning subagents (Level 2) or teammates (Level 3), match each DAG task to a shipped agent profile. Use the default general-purpose agent for anything not listed.
+
+| Task Signal | subagent_type | Why specialized |
+|-------------|---------------|------------------|
+| type=research + tech/docs/library comparison | `researcher` | Has Context7 MCP for official docs |
+| type=research + community/market/trends/sentiment | `trend-scout` | Has Reddit MCP for practitioner experience |
+| type=implement + UI/frontend/component/layout files | `frontend-dev` | Has frontend-design + interface-design skills, Context7 MCP |
+| Everything else (backend, test, review, config) | _(default)_ | Spawn prompt from intent-router is sufficient |
+
+When spawning a specialized agent:
+```
+Task({
+  prompt: "[spawn prompt from intent-router]",
+  subagent_type: "researcher"  // or trend-scout, frontend-dev
+})
+```
+
+The agent's tools, skills, and mcpServers are defined in its agent file and applied automatically. Do not override them in the Task call.
+
+If a required MCP server is not configured, the spawn will still succeed but the agent won't have that capability. Note this in the execution log.
+
 ## Dashboard 启动（Level 2-3）
 
 DAG 确认后，如果复杂度 >= Level 2：
@@ -91,14 +114,24 @@ DAG 确认后，如果复杂度 >= Level 2：
 
 如果用户说 y：
 1. `mkdir -p .godag`
-2. 写入 `.godag/state.json`（初始状态，所有 task pending）
-3. 写入 `.godag/plan.md`（人类可读计划快照）
-4. 复制插件的 `dashboard/index.html` → `.godag/dashboard.html`
-5. 启动 HTTP server：
+2. 归档上一次运行（如果 state.json 已存在）：
    ```bash
-   cd .godag && python3 -m http.server 4567 --bind 127.0.0.1 &
+   if [ -f .godag/state.json ]; then
+     ts=$(date -r .godag/state.json +%Y%m%d-%H%M%S)
+     mkdir -p ".godag/runs/$ts"
+     mv .godag/state.json ".godag/runs/$ts/"
+     [ -f .godag/log.jsonl ] && mv .godag/log.jsonl ".godag/runs/$ts/"
+     [ -f .godag/plan.md ] && mv .godag/plan.md ".godag/runs/$ts/"
+   fi
+   ```
+3. 写入 `.godag/state.json`（初始状态，所有 task pending）
+4. 写入 `.godag/plan.md`（人类可读计划快照）
+5. 启动 Dashboard server：
+   ```bash
+   GODAG_DIR=$(pwd)/.godag PORT=4567 node <plugin_dir>/dashboard/serve.js &
    echo $! > .godag/.server.pid
    ```
+   - `<plugin_dir>` 是插件安装目录（包含 dashboard/dist/ 构建产物）
    - 默认端口 4567，如果被占用尝试 4568-4580
    - 超过范围跳过 dashboard，不影响执行
 6. 输出：`📊 Dashboard: http://localhost:4567`
@@ -118,7 +151,10 @@ DAG 确认后，如果复杂度 >= Level 2：
 遍历 DAG 中的 task：
   - 对于没有 blocked_by 的 task：立即用 Task tool 创建并执行
   - 对于有 blocked_by 的 task：等待依赖完成后再创建
-  - 每个 task 完成后：运行 acceptance 标准验证
+  - 每个 task 完成后：
+    1. 从 subagent 返回值中提取 {"task_id","summary","files_changed"} JSON 块
+    2. 由主 agent 执行 state.json 更新（见下方协议）
+    3. 运行 acceptance 标准验证，将结果写入 acceptance_passed / acceptance_output
 ```
 
 ### Level 3 执行（Agent Teams）
@@ -127,8 +163,39 @@ DAG 确认后，如果复杂度 >= Level 2：
 2. 将 DAG 中的所有 task 添加到 shared task list（包含依赖关系）
 3. 为每个并行工作流 spawn 一个 teammate（使用 intent-router 生成的 spawn prompt）
 4. teammate 自动从 shared task list 中 claim unblocked 的 task
-5. task 完成后自动 unblock 下游 task
+5. teammate 完成后通过 SendMessage 向 team lead 发送结构化 JSON 块
+6. team lead 收到消息后执行 state.json 更新（见下方协议）
+7. team lead 运行 acceptance 验证，更新结果，unblock 下游 task
 ```
+
+### State Update Protocol
+
+state.json 的唯一写入者是 orchestrator（Level 2 的主 agent / Level 3 的 team lead）。Teammate 永远不直接写 state.json。
+
+当 orchestrator 收到 teammate 的完成报告后，执行以下原子更新：
+
+```
+1. 读取 .godag/state.json
+2. 更新 tasks.TX：
+   - status → "done"
+   - summary → teammate 报告的 summary
+   - files_changed → teammate 报告的 files_changed
+   - completed_at → 当前 ISO 时间
+   - duration_s → completed_at - started_at 的秒数
+3. 运行 acceptance 命令，写入：
+   - acceptance_passed → true/false
+   - acceptance_output → 命令输出
+4. 检查下游 task：将所有 blocked_by 包含 TX 且依赖已全部完成的 task 状态从 blocked → pending
+5. 重新计算 confidence
+6. 更新 meta.updated_at
+7. 写回 .godag/state.json
+8. 追加 task_done 事件到 log.jsonl
+```
+
+这保证了：
+- 无并发写入冲突（单一写入者）
+- state.json 始终一致（原子读-改-写）
+- teammate 无需知道 state.json 的内部结构
 
 ## 状态持久化
 
@@ -136,14 +203,41 @@ DAG 确认后，如果复杂度 >= Level 2：
 
 首次 `/go` 时自动创建：`mkdir -p .godag`
 
+### 运行历史归档
+
+每次新 `/go`（非 continue）启动时，如果 `.godag/state.json` 已存在，自动归档到 `.godag/runs/{timestamp}/`：
+
+```
+.godag/
+├── state.json              ← 当前运行（实时更新）
+├── log.jsonl               ← 当前运行事件流
+├── plan.md                 ← 当前运行计划
+├── runs/
+│   ├── 20250215-143000/    ← 按 state.json 修改时间命名
+│   │   ├── state.json      ← 该次运行的最终状态
+│   │   ├── log.jsonl       ← 该次运行的完整事件流
+│   │   └── plan.md         ← 该次运行的计划快照
+│   └── 20250216-091500/
+│       ├── state.json
+│       ├── log.jsonl
+│       └── plan.md
+```
+
+归档数据用于：
+- 调试：回溯任务失败原因、查看 acceptance_output
+- 优化：对比不同运行的 confidence、duration、retry 数据
+- Dashboard 可通过 History 下拉加载历史运行数据
+
 ### state.json 写入时机
 
-| 时机 | 写入内容 |
-|------|---------|
-| DAG 确认后 | 完整的初始 state（meta + dag + tasks 全 pending + confidence 初始值）|
-| 每个 task 状态变更时 | 更新对应 tasks.TX 和 confidence |
-| task 完成时 | 更新 summary, acceptance_output, files_changed, duration_s |
-| session 结束时 | 更新 meta.status 为 complete/failed，关闭 dashboard server |
+所有写入均由 orchestrator（Level 2 主 agent / Level 3 team lead）执行。Teammate 不写 state.json。
+
+| 时机 | 写入者 | 写入内容 |
+|------|--------|---------|
+| DAG 确认后 | orchestrator | 完整的初始 state（meta + dag + tasks 全 pending + confidence 初始值）|
+| task 开始时 | orchestrator | tasks.TX.status → in_progress, started_at |
+| task 完成时 | orchestrator | 从 teammate 报告中提取 summary, files_changed；运行 acceptance 写入结果；更新 confidence |
+| session 结束时 | orchestrator | meta.status → complete/failed |
 
 ### state.json 结构
 
@@ -264,5 +358,5 @@ DAG 确认后、执行开始前写入一次，之后不更新。格式：
 1. 更新 `meta.status` 为 `complete`（或 `failed`）
 2. 重新计算 confidence 写入
 3. 追加 `session_complete` 到 log.jsonl
-4. 关闭 dashboard server：`kill $(cat .godag/.server.pid) 2>/dev/null && rm -f .godag/.server.pid`
-5. 追加 `dashboard_stopped` 到 log.jsonl
+
+> Dashboard server 不会自动关闭，用户可在 Dashboard UI 中点击关闭按钮手动停止。

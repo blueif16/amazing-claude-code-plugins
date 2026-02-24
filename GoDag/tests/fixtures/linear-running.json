@@ -1,0 +1,152 @@
+{
+  "$schema": "godag/v2.1",
+  "meta": {
+    "project": "auth-jwt-migration",
+    "intent_type": "refactor",
+    "level": 2,
+    "strategy": "sequential",
+    "started_at": "2026-02-23T14:00:00Z",
+    "updated_at": "2026-02-23T14:18:00Z",
+    "status": "running",
+    "user_prompt": "把认证从 session-based 切换到 JWT",
+    "teammates_max": 1
+  },
+  "dag": {
+    "tasks": [
+      {
+        "id": "T1",
+        "title": "Extract auth interface",
+        "type": "refactor",
+        "scope": ["src/auth/types.ts", "src/auth/interface.ts"],
+        "blocked_by": [],
+        "acceptance": "npx tsc --noEmit 2>&1 | tail -3",
+        "estimated_complexity": "small",
+        "agent_role": "Backend engineer"
+      },
+      {
+        "id": "T2",
+        "title": "Implement JWT provider",
+        "type": "implement",
+        "scope": ["src/auth/jwt-provider.ts", "src/auth/token.ts"],
+        "blocked_by": ["T1"],
+        "acceptance": "npm test -- --grep 'jwt' 2>&1 | tail -5",
+        "estimated_complexity": "medium",
+        "agent_role": "Backend engineer"
+      },
+      {
+        "id": "T3",
+        "title": "Migrate callers to new interface",
+        "type": "refactor",
+        "scope": ["src/routes/", "src/middleware/"],
+        "blocked_by": ["T2"],
+        "acceptance": "npx tsc --noEmit && npm test 2>&1 | tail -5",
+        "estimated_complexity": "large",
+        "agent_role": "Backend engineer"
+      },
+      {
+        "id": "T4",
+        "title": "Remove old session auth code",
+        "type": "refactor",
+        "scope": ["src/auth/session.ts", "src/middleware/session.ts"],
+        "blocked_by": ["T3"],
+        "acceptance": "! grep -r 'session' src/auth/ && npm test 2>&1 | tail -3",
+        "estimated_complexity": "small",
+        "agent_role": "Backend engineer"
+      },
+      {
+        "id": "T5",
+        "title": "Full regression test",
+        "type": "test",
+        "scope": ["tests/"],
+        "blocked_by": ["T4"],
+        "acceptance": "npm test 2>&1 | tail -5",
+        "estimated_complexity": "medium",
+        "agent_role": "Test engineer"
+      }
+    ],
+    "edges": [
+      ["T1", "T2"],
+      ["T2", "T3"],
+      ["T3", "T4"],
+      ["T4", "T5"]
+    ]
+  },
+  "tasks": {
+    "T1": {
+      "status": "done",
+      "agent": "backend-dev",
+      "started_at": "2026-02-23T14:00:05Z",
+      "completed_at": "2026-02-23T14:05:30Z",
+      "duration_s": 325,
+      "acceptance_passed": true,
+      "acceptance_output": "No errors found.",
+      "summary": "Extracted AuthProvider interface and AuthToken type. Session provider now implements the interface.",
+      "retries": 0,
+      "files_changed": ["src/auth/types.ts", "src/auth/interface.ts", "src/auth/session.ts"]
+    },
+    "T2": {
+      "status": "done",
+      "agent": "backend-dev",
+      "started_at": "2026-02-23T14:05:35Z",
+      "completed_at": "2026-02-23T14:14:00Z",
+      "duration_s": 505,
+      "acceptance_passed": true,
+      "acceptance_output": "6 passing (2s)\\n0 failing",
+      "summary": "Implemented JwtProvider with RS256 signing, refresh token rotation, and token revocation list.",
+      "retries": 1,
+      "files_changed": ["src/auth/jwt-provider.ts", "src/auth/token.ts", "tests/unit/auth/jwt.test.ts"]
+    },
+    "T3": {
+      "status": "in_progress",
+      "agent": "backend-dev",
+      "started_at": "2026-02-23T14:14:10Z",
+      "completed_at": null,
+      "duration_s": null,
+      "acceptance_passed": null,
+      "acceptance_output": null,
+      "summary": null,
+      "retries": 0,
+      "files_changed": []
+    },
+    "T4": {
+      "status": "blocked",
+      "agent": null,
+      "started_at": null,
+      "completed_at": null,
+      "duration_s": null,
+      "acceptance_passed": null,
+      "acceptance_output": null,
+      "summary": null,
+      "retries": 0,
+      "files_changed": []
+    },
+    "T5": {
+      "status": "blocked",
+      "agent": null,
+      "started_at": null,
+      "completed_at": null,
+      "duration_s": null,
+      "acceptance_passed": null,
+      "acceptance_output": null,
+      "summary": null,
+      "retries": 0,
+      "files_changed": []
+    }
+  },
+  "confidence": {
+    "score": 68,
+    "level": "medium",
+    "signals": {
+      "acceptance_pass_rate": 1.0,
+      "retry_count": 1,
+      "lint_clean": true,
+      "has_tests": true,
+      "escalation_count": 0
+    }
+  },
+  "dashboard": {
+    "server_pid": null,
+    "port": null,
+    "url": null
+  }
+}

@@ -1,0 +1,11 @@
+{"ts":"2026-02-23T10:30:00Z","event":"session_start","data":{"project":"google-oauth","level":3}}
+{"ts":"2026-02-23T10:30:02Z","event":"plan_generated","data":{"tasks":5,"strategy":"parallel_fanout"}}
+{"ts":"2026-02-23T10:30:03Z","event":"user_confirmed","data":{}}
+{"ts":"2026-02-23T10:30:04Z","event":"dashboard_started","data":{"port":4567}}
+{"ts":"2026-02-23T10:30:05Z","event":"task_started","data":{"task":"T1","agent":"config-specialist"}}
+{"ts":"2026-02-23T10:33:22Z","event":"task_done","data":{"task":"T1","duration_s":197,"acceptance":"pass"}}
+{"ts":"2026-02-23T10:33:22Z","event":"task_unblocked","data":{"task":"T2","unblocked_by":"T1"}}
+{"ts":"2026-02-23T10:33:22Z","event":"task_unblocked","data":{"task":"T3","unblocked_by":"T1"}}
+{"ts":"2026-02-23T10:33:30Z","event":"task_started","data":{"task":"T2","agent":"backend-dev"}}
+{"ts":"2026-02-23T10:33:32Z","event":"task_started","data":{"task":"T3","agent":"frontend-dev"}}
+{"ts":"2026-02-23T10:42:00Z","event":"file_changed","data":{"task":"T2","file":"src/routes/auth/google.ts"}}
