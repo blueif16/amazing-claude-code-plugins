@@ -10,6 +10,10 @@
     "./commands/go.md",
     "./commands/report.md"
   ],
-  "agents": "./agents/",
+  "agents": [
+    "./agents/researcher.md",
+    "./agents/trend-scout.md",
+    "./agents/frontend-dev.md"
+  ],
   "skills": "./skills/"
 }
