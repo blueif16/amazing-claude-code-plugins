@@ -128,11 +128,30 @@ Read .godag/context/{task_id}-followup.md — contains the Redis Cluster docs yo
 4. 写入 `.godag/plan.md`（人类可读计划快照）
 5. 启动 Dashboard server：
    ```bash
-   GODAG_DIR=$(pwd)/.godag PORT=4567 node <plugin_dir>/dashboard/serve.js &
-   echo $! > .godag/.server.pid
+   # Resolve serve.js from the installed plugin location
+   GODAG_SERVE=$(find ~/.claude/plugins -path "*/godag/dashboard/serve.js" 2>/dev/null | head -1)
+   # Fallback: check if running from local dev (plugin dir is a sibling of commands/)
+   if [ -z "$GODAG_SERVE" ]; then
+     GODAG_SERVE=$(cd "$(dirname "$0")/../dashboard" 2>/dev/null && pwd)/serve.js
+   fi
+   if [ -z "$GODAG_SERVE" ] || [ ! -f "$GODAG_SERVE" ]; then
+     echo "⚠️ Dashboard serve.js not found — skipping dashboard"
+   else
+     PORT=4567
+     while [ $PORT -le 4580 ] && lsof -iTCP:$PORT -sTCP:LISTEN >/dev/null 2>&1; do
+       PORT=$((PORT + 1))
+     done
+     if [ $PORT -le 4580 ]; then
+       GODAG_DIR=$(pwd)/.godag PORT=$PORT node "$GODAG_SERVE" &
+       echo $! > .godag/.server.pid
+     else
+       echo "⚠️ Ports 4567-4580 all occupied — skipping dashboard"
+     fi
+   fi
    ```
-   - `<plugin_dir>` 是插件安装目录（包含 dashboard/dist/ 构建产物）
-   - 默认端口 4567，如果被占用尝试 4568-4580
+   - 先在 `~/.claude/plugins` 缓存中查找 serve.js（marketplace 安装路径）
+   - Fallback 到本地开发目录（未安装时直接运行）
+   - 默认端口 4567，如果被占用自动尝试 4568-4580
    - 超过范围跳过 dashboard，不影响执行
 6. 将 server 信息写入 state.json 的 `dashboard` 对象
 

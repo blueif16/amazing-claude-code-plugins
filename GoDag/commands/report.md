@@ -106,8 +106,11 @@ allowed-tools: ["Bash", "Read", "Task", "Teammate"]
 
 如果当前没有运行 dashboard server，启动一个并输出 URL：
 1. 检查 `.godag/state.json` 是否存在
-2. 检查 `.godag/dashboard.html` 是否存在，不存在则从插件复制
-3. 启动 HTTP server（同 `/go` 的启动逻辑）
+2. 使用与 `/go` 相同的 serve.js 解析逻辑查找 dashboard：
+   ```bash
+   GODAG_SERVE=$(find ~/.claude/plugins -path "*/godag/dashboard/serve.js" 2>/dev/null | head -1)
+   ```
+3. 启动 HTTP server（同 `/go` 的启动逻辑，端口 4567-4580 自动探测）
 4. 输出：`📊 Dashboard: http://localhost:[port]`
 
 用于执行已完成后，用户想回顾可视化结果的场景。
