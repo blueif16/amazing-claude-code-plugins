@@ -2,9 +2,14 @@
   "name": "godag",
   "version": "2.1.0",
   "description": "From one sentence to a coordinated agent team. Intent → DAG → Execute → Visualize.",
-  "skills": ["skills/intent-router.md"],
+  "author": {
+    "name": "GoDag Team"
+  },
+  "keywords": ["agent-teams", "orchestration", "DAG", "multi-agent", "workflow"],
   "commands": [
-    "commands/go.md",
-    "commands/report.md"
-  ]
+    "./commands/go.md",
+    "./commands/report.md"
+  ],
+  "agents": "./agents/",
+  "skills": "./skills/"
 }

@@ -1,0 +1,153 @@
+{
+  "$schema": "godag/v2.1",
+  "meta": {
+    "project": "google-oauth",
+    "intent_type": "implement",
+    "level": 3,
+    "strategy": "parallel_fanout",
+    "started_at": "2026-02-23T10:30:00Z",
+    "updated_at": "2026-02-23T10:42:00Z",
+    "status": "running",
+    "user_prompt": "给登录页加上 Google OAuth",
+    "teammates_max": 3
+  },
+  "dag": {
+    "tasks": [
+      {
+        "id": "T1",
+        "title": "配置 Google OAuth credentials",
+        "type": "config",
+        "scope": [".env", "config/oauth.ts"],
+        "blocked_by": [],
+        "acceptance": "grep GOOGLE_CLIENT_ID .env && echo OK 2>&1 | tail -3",
+        "estimated_complexity": "small",
+        "agent_role": "Config specialist"
+      },
+      {
+        "id": "T2",
+        "title": "后端 OAuth callback 路由",
+        "type": "implement",
+        "scope": ["src/routes/auth/", "src/services/oauth.ts"],
+        "blocked_by": ["T1"],
+        "acceptance": "npm test -- --grep 'oauth' 2>&1 | tail -5",
+        "estimated_complexity": "medium",
+        "agent_role": "Backend engineer"
+      },
+      {
+        "id": "T3",
+        "title": "前端 Google 登录按钮组件",
+        "type": "implement",
+        "scope": ["src/components/auth/", "src/pages/login.tsx"],
+        "blocked_by": ["T1"],
+        "acceptance": "npx tsc --noEmit 2>&1 | tail -3",
+        "estimated_complexity": "medium",
+        "agent_role": "Frontend engineer"
+      },
+      {
+        "id": "T4",
+        "title": "OAuth 集成测试",
+        "type": "test",
+        "scope": ["tests/integration/auth/"],
+        "blocked_by": ["T2", "T3"],
+        "acceptance": "npm run test:integration -- --grep 'oauth' 2>&1 | tail -5",
+        "estimated_complexity": "medium",
+        "agent_role": "Test engineer"
+      },
+      {
+        "id": "T5",
+        "title": "Code Review & 整体验证",
+        "type": "review",
+        "scope": ["src/", "tests/"],
+        "blocked_by": ["T4"],
+        "acceptance": "npm run lint && npm test 2>&1 | tail -5",
+        "estimated_complexity": "small",
+        "agent_role": "Code reviewer"
+      }
+    ],
+    "edges": [
+      ["T1", "T2"],
+      ["T1", "T3"],
+      ["T2", "T4"],
+      ["T3", "T4"],
+      ["T4", "T5"]
+    ]
+  },
+  "tasks": {
+    "T1": {
+      "status": "done",
+      "agent": "config-specialist",
+      "started_at": "2026-02-23T10:30:05Z",
+      "completed_at": "2026-02-23T10:33:22Z",
+      "duration_s": 197,
+      "acceptance_passed": true,
+      "acceptance_output": "GOOGLE_CLIENT_ID=abc123...\\nOK",
+      "summary": "Created .env with Google OAuth client ID/secret. Added config/oauth.ts with provider settings.",
+      "retries": 0,
+      "files_changed": [".env", "config/oauth.ts"]
+    },
+    "T2": {
+      "status": "in_progress",
+      "agent": "backend-dev",
+      "started_at": "2026-02-23T10:33:30Z",
+      "completed_at": null,
+      "duration_s": null,
+      "acceptance_passed": null,
+      "acceptance_output": null,
+      "summary": null,
+      "retries": 0,
+      "files_changed": []
+    },
+    "T3": {
+      "status": "in_progress",
+      "agent": "frontend-dev",
+      "started_at": "2026-02-23T10:33:32Z",
+      "completed_at": null,
+      "duration_s": null,
+      "acceptance_passed": null,
+      "acceptance_output": null,
+      "summary": null,
+      "retries": 0,
+      "files_changed": []
+    },
+    "T4": {
+      "status": "blocked",
+      "agent": null,
+      "started_at": null,
+      "completed_at": null,
+      "duration_s": null,
+      "acceptance_passed": null,
+      "acceptance_output": null,
+      "summary": null,
+      "retries": 0,
+      "files_changed": []
+    },
+    "T5": {
+      "status": "pending",
+      "agent": null,
+      "started_at": null,
+      "completed_at": null,
+      "duration_s": null,
+      "acceptance_passed": null,
+      "acceptance_output": null,
+      "summary": null,
+      "retries": 0,
+      "files_changed": []
+    }
+  },
+  "confidence": {
+    "score": 72,
+    "level": "medium",
+    "signals": {
+      "acceptance_pass_rate": 1.0,
+      "retry_count": 0,
+      "lint_clean": null,
+      "has_tests": null,
+      "escalation_count": 0
+    }
+  },
+  "dashboard": {
+    "server_pid": null,
+    "port": null,
+    "url": null
+  }
+}
