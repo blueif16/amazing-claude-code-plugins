@@ -11,8 +11,6 @@
     "./commands/report.md"
   ],
   "agents": [
-    "./agents/researcher.md",
-    "./agents/trend-scout.md",
     "./agents/frontend-dev.md"
   ],
   "skills": "./skills/"

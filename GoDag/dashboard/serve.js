@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Minimal static server — zero dependencies, serves dashboard + .godag data
 import { createServer } from 'node:http'
-import { readFile, readdir } from 'node:fs/promises'
+import { readFile, readdir, writeFile, appendFile } from 'node:fs/promises'
 import { join, extname } from 'node:path'
 import { existsSync } from 'node:fs'
 
@@ -20,11 +20,49 @@ async function handler(req, res) {
   const url = new URL(req.url, `http://localhost:${port}`)
   const base = url.pathname.replace(/^\//, '')
 
+  // CORS preflight
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' })
+    res.end()
+    return
+  }
+
   // POST /stop — graceful shutdown
   if (req.method === 'POST' && url.pathname === '/stop') {
     res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' })
     res.end('{"ok":true}')
     setTimeout(() => process.exit(0), 300)
+    return
+  }
+
+  // POST /hitl — toggle gate or approve
+  if (req.method === 'POST' && url.pathname === '/hitl') {
+    const chunks = []
+    for await (const chunk of req) chunks.push(chunk)
+    const body = JSON.parse(Buffer.concat(chunks).toString())
+    const stateFile = join(godagDir, 'state.json')
+    const headers = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+    try {
+      const data = JSON.parse(await readFile(stateFile, 'utf-8'))
+      if (body.action === 'toggle') {
+        const dt = data.dag.tasks.find(t => t.id === body.task_id)
+        if (dt) dt.hitl = !dt.hitl
+      } else if (body.action === 'approve') {
+        if (data.tasks[body.task_id]?.status === 'awaiting_human') {
+          data.tasks[body.task_id].status = 'pending'
+          const logFile = join(godagDir, 'log.jsonl')
+          const event = JSON.stringify({ ts: new Date().toISOString(), event: 'hitl_approved', data: { task: body.task_id } })
+          await appendFile(logFile, event + '\n').catch(() => {})
+        }
+      }
+      data.meta.updated_at = new Date().toISOString()
+      await writeFile(stateFile, JSON.stringify(data, null, 2))
+      res.writeHead(200, headers)
+      res.end('{"ok":true}')
+    } catch (e) {
+      res.writeHead(500, headers)
+      res.end(JSON.stringify({ error: String(e) }))
+    }
     return
   }
 

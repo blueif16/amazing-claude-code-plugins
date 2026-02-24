@@ -39,8 +39,8 @@ export function Header({ state, view, onViewChange, dark, onToggleDark, onLoadFi
   const m = state?.meta
   const c = state?.confidence
   const ids = state ? Object.keys(state.tasks) : []
-  const counts = { done: 0, in_progress: 0, blocked: 0, pending: 0 }
-  ids.forEach(id => { const s = state!.tasks[id].status; counts[s === 'done' ? 'done' : s === 'in_progress' ? 'in_progress' : s === 'blocked' ? 'blocked' : 'pending']++ })
+  const counts = { done: 0, in_progress: 0, blocked: 0, pending: 0, awaiting_human: 0 }
+  ids.forEach(id => { const s = state!.tasks[id].status; counts[s === 'done' ? 'done' : s === 'in_progress' ? 'in_progress' : s === 'blocked' ? 'blocked' : s === 'awaiting_human' ? 'awaiting_human' : 'pending']++ })
   const total = ids.length || 1
   const confCls = (c?.score ?? 0) >= 80 ? 'bg-ok' : (c?.score ?? 0) >= 60 ? 'bg-warn' : 'bg-danger'
   const btnBase = 'px-2 py-1 text-[11px] border border-edge-2 bg-surf-2 text-ink-3 rounded-md hover:bg-accent-d hover:text-accent hover:border-accent/30 transition-all'
@@ -61,9 +61,10 @@ export function Header({ state, view, onViewChange, dark, onToggleDark, onLoadFi
           <div className="flex-1 h-1 bg-surf-3 rounded-full overflow-hidden flex">
             <div className="h-full bg-ok/80 transition-all duration-700 ease-out" style={{ width: `${counts.done / total * 100}%` }} />
             <div className="h-full bg-accent/70 transition-all duration-700 ease-out" style={{ width: `${counts.in_progress / total * 100}%` }} />
-            <div className="h-full bg-warn/50 transition-all duration-700 ease-out" style={{ width: `${counts.blocked / total * 100}%` }} />
+            <div className="h-full bg-warn/70 transition-all duration-700 ease-out" style={{ width: `${counts.awaiting_human / total * 100}%` }} />
+            <div className="h-full bg-warn/30 transition-all duration-700 ease-out" style={{ width: `${counts.blocked / total * 100}%` }} />
           </div>
-          <span className="text-[10px] text-ink-3 font-medium tabular-nums whitespace-nowrap">{counts.done}/{total}{counts.in_progress ? ` · ${counts.in_progress} active` : ''}</span>
+          <span className="text-[10px] text-ink-3 font-medium tabular-nums whitespace-nowrap">{counts.done}/{total}{counts.in_progress ? ` · ${counts.in_progress} active` : ''}{counts.awaiting_human ? ` · ${counts.awaiting_human} gated` : ''}</span>
         </div>
         {c && (
           <div className="text-[10px] text-ink-2 flex items-center gap-1.5 group relative cursor-default">

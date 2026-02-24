@@ -11,6 +11,7 @@ export default defineConfig({
       '/fixtures': 'http://localhost:4567',
       '/runs': 'http://localhost:4567',
       '/stop': 'http://localhost:4567',
+      '/hitl': 'http://localhost:4567',
     },
   },
   build: { outDir: 'dist', emptyOutDir: true },

@@ -15,7 +15,7 @@ allowed-tools: ["Bash", "Read", "Write", "Task", "Teammate"]
 
 1. 读取 intent-router skill
 2. 对用户输入执行意图分类（第一步）
-3. 扫描当前项目的 CLAUDE.md 和目录结构获取上下文
+3. 用内置 `Explore` agent 扫描项目的 CLAUDE.md 和目录结构获取上下文
 4. 执行复杂度评估（第二步）
 5. 根据复杂度决定执行路径：
    - **Level 1：** 直接开始执行，不需要确认
@@ -55,65 +55,65 @@ allowed-tools: ["Bash", "Read", "Write", "Task", "Teammate"]
 4. 如果继续：
    - 检查哪些 task 还没做完
    - 对已完成的 task，从 `tasks.TX.summary` 构建上下文
+   - 启动 dashboard（如果之前的 server 还活着就跳过），输出 URL
    - spawn 新 teammates，在 spawn prompt 中注入前置 task 的 summary
-5. 问用户是否启动 dashboard（如果之前的 server 还活着就跳过）
 
 ## DAG 确认交互
 
-当生成了 Level 2-3 的 Task DAG 后，展示给用户的格式：
-
-```
-📋 执行计划：[项目名]
-
-任务图：
-  T1: [task title] [type] ──┐
-  T2: [task title] [type]   ├── T4: [task title] [type]
-  T3: [task title] [type] ──┘       │
-                                     ↓
-                               T5: [task title] [type]
-
-预计 teammates: N | 预计复杂度: [低/中/高]
-
-确认执行？(y/n/调整)
-```
-
+用户确认时：
 - **用户说 y / 好 / 开始 / 确认：** 立即开始执行
 - **用户说 n / 不 / 取消：** 终止
-- **用户提出调整：** 根据反馈修改 DAG 后再次确认
+- **用户提出调整：** 根据反馈修改 DAG 后再次确认（包括从 Dashboard 调整的 HITL 门控）
 
 ## Agent Assignment
 
-When spawning subagents (Level 2) or teammates (Level 3), match each DAG task to a shipped agent profile. Use the default general-purpose agent for anything not listed.
+Match each DAG task to an agent. Use built-in agents for exploration/planning, `frontend-dev` for UI work, and `general-purpose` for everything else.
 
-| Task Signal | subagent_type | Why specialized |
-|-------------|---------------|------------------|
-| type=research + tech/docs/library comparison | `researcher` | Has Context7 MCP for official docs |
-| type=research + community/market/trends/sentiment | `trend-scout` | Has Reddit MCP for practitioner experience |
-| type=implement + UI/frontend/component/layout files | `frontend-dev` | Has frontend-design + interface-design skills, Context7 MCP |
-| Everything else (backend, test, review, config) | _(default)_ | Spawn prompt from intent-router is sufficient |
+| Task Signal | Agent | Why |
+|---|---|---|
+| Pre-DAG codebase scan (step 3) | built-in `Explore` | Read-only codebase navigation, no writes |
+| Complex task needing upfront research | built-in `Plan` | Research + planning without modifying files |
+| type=implement + UI/frontend/component/layout | `frontend-dev` | Has frontend-design + interface-design skills |
+| Everything else | `general-purpose` | Spawn prompt from intent-router is sufficient |
 
-When spawning a specialized agent:
+## MCP Mediation
+
+Custom subagents **cannot call MCP tools** (known Claude Code bug, open since Dec 2025). The main thread mediates all MCP access.
+
+### Pre-spawn context (optional, not aggressive)
+
+If a DAG task clearly needs external data (docs, community sentiment), the orchestrator MAY pre-fetch before spawning:
+
+1. Load the relevant recon skill (e.g. `market-recon` for community research)
+2. Call MCP tools per the skill's guidance
+3. Write results to `.godag/context/{task_id}-{type}.md`
+4. Reference the file in the subagent's spawn prompt
+5. `/compact` to shed MCP results from main thread context
+
+Do NOT pre-fetch speculatively. Only fetch when the DAG task explicitly requires external data.
+
+### Mid-execution MCP requests
+
+**Level 2 (subagents):** Subagent finishes early with a context request:
+```json
+{"task_id":"T2","status":"needs_context","query":"What is the current API for NextAuth v5 session handling?"}
 ```
-Task({
-  prompt: "[spawn prompt from intent-router]",
-  subagent_type: "researcher"  // or trend-scout, frontend-dev
-})
+Orchestrator receives this, calls MCP, writes to `.godag/context/{task_id}-followup.md`, then resumes the subagent using the `resume` parameter with the returned agent ID.
+
+**Level 3 (Agent Teams):** Teammate sends a `SendMessage` to team lead:
+```
+[MCP_REQUEST] I need docs on Redis Cluster failover behavior
+```
+Team lead calls MCP, writes to `.godag/context/{task_id}-followup.md`, replies via `SendMessage`:
+```
+Read .godag/context/{task_id}-followup.md — contains the Redis Cluster docs you requested.
 ```
 
-The agent's tools, skills, and mcpServers are defined in its agent file and applied automatically. Do not override them in the Task call.
+## Dashboard 启动（Level 2-3，DAG 确认前）
 
-If a required MCP server is not configured, the spawn will still succeed but the agent won't have that capability. Note this in the execution log.
+生成 DAG 后、展示确认前，自动启动 Dashboard：
 
-## Dashboard 启动（Level 2-3）
-
-DAG 确认后，如果复杂度 >= Level 2：
-
-```
-启动可视化 Dashboard？(y/n)
-```
-
-如果用户说 y：
-1. `mkdir -p .godag`
+1. `mkdir -p .godag/context`
 2. 归档上一次运行（如果 state.json 已存在）：
    ```bash
    if [ -f .godag/state.json ]; then
@@ -134,10 +134,18 @@ DAG 确认后，如果复杂度 >= Level 2：
    - `<plugin_dir>` 是插件安装目录（包含 dashboard/dist/ 构建产物）
    - 默认端口 4567，如果被占用尝试 4568-4580
    - 超过范围跳过 dashboard，不影响执行
-6. 输出：`📊 Dashboard: http://localhost:4567`
-7. 将 server 信息写入 state.json 的 `dashboard` 对象
+6. 将 server 信息写入 state.json 的 `dashboard` 对象
 
-如果用户说 n，正常执行，无 dashboard。
+然后展示 DAG 确认，在输出中包含 Dashboard URL：
+
+```
+📋 执行计划：[...现有 ASCII DAG...]
+
+📊 Dashboard: http://localhost:4567
+确认执行？(y/n/调整) — 可通过 Dashboard 点击节点调整门控位置
+```
+
+用户可以在确认前打开 Dashboard 调整 HITL 门控，也可以直接在终端确认。Dashboard 只是可选的可视化，不是必须打开的。
 
 ## 执行启动
 
@@ -147,15 +155,93 @@ DAG 确认后，如果复杂度 >= Level 2：
 直接开始工作，无特殊流程。
 
 ### Level 2 执行（Subagents）
+
+Level 2 使用 Task tool spawn subagent。因为 subagent 运行期间主线程阻塞，需要在 spawn 前后做完整的状态记录。
+
+#### 每个 Task 的执行循环：
+
 ```
-遍历 DAG 中的 task：
-  - 对于没有 blocked_by 的 task：立即用 Task tool 创建并执行
-  - 对于有 blocked_by 的 task：等待依赖完成后再创建
-  - 每个 task 完成后：
-    1. 从 subagent 返回值中提取 {"task_id","summary","files_changed"} JSON 块
-    2. 由主 agent 执行 state.json 更新（见下方协议）
-    3. 运行 acceptance 标准验证，将结果写入 acceptance_passed / acceptance_output
+对于每个可执行的 task TX：
+
+1. PRE-SPAWN（主线程写入）：
+   - 读取 state.json
+   - tasks.TX.status → "in_progress"
+   - tasks.TX.started_at → 当前 ISO 时间
+   - tasks.TX.agent → 选定的 agent 类型
+   - 写回 state.json
+   - 追加 {"event":"task_started","data":{"task":"TX","agent":"..."}} 到 log.jsonl
+
+2. SPAWN（Task tool 调用）：
+   - spawn prompt 中注入结构化返回要求（见下方模板）
+   - 如果有前置 task 的 summary，注入到 spawn prompt 作为上下文
+   - 如果有 .godag/context/{task_id}-*.md 文件，在 prompt 中引用
+
+3. POST-RETURN（主线程处理返回值）：
+   - 从返回值中提取 JSON 块（见下方格式）
+   - 读取 state.json
+   - tasks.TX.status → "done"
+   - tasks.TX.completed_at → 当前 ISO 时间
+   - tasks.TX.duration_s → completed_at - started_at 秒数
+   - tasks.TX.summary → 提取的 summary
+   - tasks.TX.files_changed → 提取的 files_changed
+   - 运行 acceptance 命令，捕获完整 stdout+stderr：
+     - tasks.TX.acceptance_passed → true/false
+     - tasks.TX.acceptance_output → 命令完整输出（不截断）
+   - 如果 acceptance 失败且 retries < 2：
+     - tasks.TX.retries += 1
+     - tasks.TX.status → "in_progress"
+     - 追加 task_retry 事件到 log.jsonl
+     - 重新 spawn，prompt 中注入失败原因和 acceptance_output
+   - 检查下游 task，unblock 已满足依赖的 task：
+     - hitl: true → awaiting_human
+     - 否则 → pending
+   - 为每个 files_changed 追加 file_changed 事件到 log.jsonl
+   - 追加 task_done 事件到 log.jsonl（包含 summary、duration_s、acceptance 结果）
+   - 重新计算 confidence
+   - 写回 state.json
 ```
+
+#### Subagent Spawn Prompt 模板：
+
+```
+你正在执行 GoDag 任务 {task_id}: {title}
+
+## 任务信息
+- 类型: {type}
+- 范围: {scope}
+- 验收标准: {acceptance}
+- 角色: {agent_role}
+
+## 前置上下文
+{前置 task 的 summary，如果有的话}
+{.godag/context/ 中的相关文件，如果有的话}
+
+## 执行要求
+1. 完成任务后，将推理过程和关键决策写入 .godag/context/{task_id}-log.md
+2. 在你的最终输出末尾，必须包含以下 JSON 块（用 ```godag-result 包裹）：
+
+```godag-result
+{
+  "task_id": "{task_id}",
+  "summary": "一句话总结做了什么",
+  "files_changed": ["修改的文件路径列表"],
+  "decisions": ["关键决策及原因"],
+  "issues": ["遇到的问题，如果没有则为空数组"]
+}
+```
+```
+
+#### 并行 Spawn
+
+无依赖的 task 可以并行 spawn（多个 Task tool 调用在同一消息中）。每个返回时立即执行 POST-RETURN 流程更新 state.json，Dashboard 能看到逐个完成。
+
+#### HITL 门控
+
+如果即将 spawn 的 task 有 hitl: true：
+1. 将 tasks.TX.status 设为 "awaiting_human"
+2. 输出上游 task 的 summary，问用户是否继续
+3. Dashboard 也会显示门控状态，用户可从 Dashboard 或终端批准
+4. 用户批准后（终端确认或 Dashboard POST /hitl approve），继续 spawn
 
 ### Level 3 执行（Agent Teams）
 ```
@@ -163,33 +249,45 @@ DAG 确认后，如果复杂度 >= Level 2：
 2. 将 DAG 中的所有 task 添加到 shared task list（包含依赖关系）
 3. 为每个并行工作流 spawn 一个 teammate（使用 intent-router 生成的 spawn prompt）
 4. teammate 自动从 shared task list 中 claim unblocked 的 task
-5. teammate 完成后通过 SendMessage 向 team lead 发送结构化 JSON 块
-6. team lead 收到消息后执行 state.json 更新（见下方协议）
-7. team lead 运行 acceptance 验证，更新结果，unblock 下游 task
+5. HITL 门控：当 hitl: true 的 task 被 unblock 后，team lead 将其状态设为 "awaiting_human"，
+   展示上游结果，等待用户批准后再允许 teammate claim
+6. teammate 完成后通过 SendMessage 向 team lead 发送结构化 JSON 块
+7. team lead 收到消息后执行 state.json 更新（见下方协议）
+8. team lead 运行 acceptance 验证，更新结果，unblock 下游 task
 ```
 
 ### State Update Protocol
 
-state.json 的唯一写入者是 orchestrator（Level 2 的主 agent / Level 3 的 team lead）。Teammate 永远不直接写 state.json。
+state.json 的唯一写入者是 orchestrator（Level 2 的主 agent / Level 3 的 team lead）。Teammate / Subagent 永远不直接写 state.json。
 
-当 orchestrator 收到 teammate 的完成报告后，执行以下原子更新：
+**Level 2：** 主 agent 在 spawn 前写 in_progress，返回后解析 `godag-result` JSON 块并写入完整结果。
+
+**Level 3：** team lead 收到 teammate 的 SendMessage 后执行更新。
+
+两者共用以下原子更新流程（task 完成时）：
 
 ```
 1. 读取 .godag/state.json
 2. 更新 tasks.TX：
    - status → "done"
-   - summary → teammate 报告的 summary
-   - files_changed → teammate 报告的 files_changed
+   - summary → 报告的 summary
+   - files_changed → 报告的 files_changed
+   - decisions → 报告的 decisions（Level 2 从 godag-result 提取，Level 3 从 SendMessage 提取）
+   - issues → 报告的 issues
    - completed_at → 当前 ISO 时间
    - duration_s → completed_at - started_at 的秒数
-3. 运行 acceptance 命令，写入：
+3. 运行 acceptance 命令，捕获完整输出：
    - acceptance_passed → true/false
-   - acceptance_output → 命令输出
-4. 检查下游 task：将所有 blocked_by 包含 TX 且依赖已全部完成的 task 状态从 blocked → pending
-5. 重新计算 confidence
-6. 更新 meta.updated_at
-7. 写回 .godag/state.json
-8. 追加 task_done 事件到 log.jsonl
+   - acceptance_output → 命令完整 stdout+stderr（不截断，用于调试）
+4. 为每个 file_changed 追加 file_changed 事件到 log.jsonl
+5. 追加 task_done 事件到 log.jsonl：
+   {"event":"task_done","data":{"task":"TX","duration_s":N,"acceptance":"pass|fail","summary":"..."}}
+6. 检查下游 task：将所有 blocked_by 包含 TX 且依赖已全部完成的 task：
+   - 如果该 task 有 hitl: true → awaiting_human
+   - 否则 → pending
+7. 重新计算 confidence
+8. 更新 meta.updated_at
+9. 写回 .godag/state.json
 ```
 
 这保证了：
@@ -212,6 +310,7 @@ state.json 的唯一写入者是 orchestrator（Level 2 的主 agent / Level 3 �
 ├── state.json              ← 当前运行（实时更新）
 ├── log.jsonl               ← 当前运行事件流
 ├── plan.md                 ← 当前运行计划
+├── context/                ← MCP 预取数据（每次运行重置）
 ├── runs/
 │   ├── 20250215-143000/    ← 按 state.json 修改时间命名
 │   │   ├── state.json      ← 该次运行的最终状态
@@ -237,6 +336,8 @@ state.json 的唯一写入者是 orchestrator（Level 2 的主 agent / Level 3 �
 | DAG 确认后 | orchestrator | 完整的初始 state（meta + dag + tasks 全 pending + confidence 初始值）|
 | task 开始时 | orchestrator | tasks.TX.status → in_progress, started_at |
 | task 完成时 | orchestrator | 从 teammate 报告中提取 summary, files_changed；运行 acceptance 写入结果；更新 confidence |
+| HITL 门控触发 | orchestrator | tasks.TX.status → awaiting_human；追加 hitl_waiting 到 log.jsonl |
+| HITL 批准 | orchestrator/dashboard | tasks.TX.status → pending；追加 hitl_approved 到 log.jsonl |
 | session 结束时 | orchestrator | meta.status → complete/failed |
 
 ### state.json 结构
@@ -265,14 +366,15 @@ state.json 的唯一写入者是 orchestrator（Level 2 的主 agent / Level 3 �
         "blocked_by": [],
         "acceptance": "验证命令",
         "estimated_complexity": "small|medium|large",
-        "agent_role": "角色描述"
+        "agent_role": "角色描述",
+        "hitl": false
       }
     ],
     "edges": [["T1", "T2"]]
   },
   "tasks": {
     "T1": {
-      "status": "pending|blocked|in_progress|done",
+      "status": "pending|blocked|in_progress|done|awaiting_human",
       "agent": null,
       "started_at": null,
       "completed_at": null,
@@ -280,6 +382,8 @@ state.json 的唯一写入者是 orchestrator（Level 2 的主 agent / Level 3 �
       "acceptance_passed": null,
       "acceptance_output": null,
       "summary": null,
+      "decisions": [],
+      "issues": [],
       "retries": 0,
       "files_changed": []
     }
@@ -331,6 +435,7 @@ DAG 确认后、执行开始前写入一次，之后不更新。格式：
 - `session_start`, `plan_generated`, `user_confirmed`, `dashboard_started`
 - `task_started`, `task_done`, `task_retry`, `task_unblocked`
 - `file_changed`, `session_complete`, `dashboard_stopped`
+- `hitl_waiting`, `hitl_approved`
 
 格式：`{"ts":"ISO时间","event":"事件类型","data":{...}}`
 

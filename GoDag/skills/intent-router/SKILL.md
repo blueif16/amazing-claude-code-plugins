@@ -73,7 +73,8 @@ IMPORTANT: 大多数日常工作是 Level 1-2。不要过度工程化。Agent Te
         "blocked_by": [],
         "acceptance": "怎么验证这个 task 做对了（具体的命令或检查）2>&1 | tail -3",
         "estimated_complexity": "small|medium|large",
-        "agent_role": "这个 agent 的专业角色描述"
+        "agent_role": "这个 agent 的专业角色描述",
+        "hitl": false
       }
     ],
     "edges": [
@@ -92,6 +93,12 @@ IMPORTANT: 大多数日常工作是 Level 1-2。不要过度工程化。Agent Te
 5. **总是包含一个 integration/review task 在最后。** 这个 task blocked_by 所有其他 task，负责验证整体集成。
 6. **acceptance 命令必须限制输出。** 所有 acceptance 命令应追加 `2>&1 | tail -N`（N 通常 3-5）来限制输出长度。大量输出会污染 agent 的 context window。如果原始命令已经输出简洁（如 `echo OK`），可以不加。
 7. **Teammates 上限 5 个。** 超过 5 个 teammate 的协调开销大于并行收益。如果 DAG 有超过 5 个并行 task，合并相近的 task 或分阶段执行。
+
+8. **HITL 门控自动建议。** 将 `hitl: true` 设置在以下 task 上：
+   - 汇聚节点（`blocked_by` 包含 2+ 个 task 的节点）
+   - `type: "review"` 的 task
+   - 破坏性操作（migration、部署、删除）
+   用户可以在 DAG 确认时或通过 Dashboard 调整门控位置。
 
 ### `edges` 与 `blocked_by` 的关系
 
@@ -172,6 +179,15 @@ T1 (done): [summary]
 \`\`\`
 
 如果是 Level 3（Agent Teams），通过 SendMessage 将上述 JSON 块发送给 team lead。
+
+## 预取上下文
+[如果 orchestrator 预取了 MCP 数据] 读取以下文件获取背景信息：.godag/context/{task_id}-{type}.md
+[如果没有] （省略此节）
+如果你需要额外的外部文档或社区数据，在最终输出中返回：
+```json
+{"task_id":"TX","status":"needs_context","query":"你需要什么信息"}
+```
+orchestrator 会调用 MCP 并写入文件后 resume 你。
 
 ## 依赖
 [如果有 blocked_by] 等待以下任务完成后再开始：[blocked tasks]
