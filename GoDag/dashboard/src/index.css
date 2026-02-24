@@ -70,6 +70,12 @@ body { background: var(--color-canvas); color: var(--color-ink); transition: bac
 }
 .node-pulse { animation: node-pulse 2.4s ease-in-out infinite; }
 
+@keyframes node-pulse-warn {
+  0%, 100% { box-shadow: 0 0 0 0 var(--color-warn-d); }
+  50% { box-shadow: 0 0 0 6px var(--color-warn-d); }
+}
+.node-pulse-warn { animation: node-pulse-warn 2.4s ease-in-out infinite; }
+
 @keyframes glow-ok {
   0% { box-shadow: 0 0 16px var(--color-ok); }
   100% { box-shadow: none; }

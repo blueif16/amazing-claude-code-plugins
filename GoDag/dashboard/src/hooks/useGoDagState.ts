@@ -79,5 +79,19 @@ export function useGoDagState() {
     } catch { setEvents([]) }
   }, [])
 
-  return { state, events, error, transitions, loadFixture, loadFile, loadRun, manual }
+  const toggleHitl = useCallback(async (taskId: string) => {
+    try {
+      await fetch('/hitl', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'toggle', task_id: taskId }) })
+      poll()
+    } catch {}
+  }, [poll])
+
+  const approveHitl = useCallback(async (taskId: string) => {
+    try {
+      await fetch('/hitl', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'approve', task_id: taskId }) })
+      poll()
+    } catch {}
+  }, [poll])
+
+  return { state, events, error, transitions, loadFixture, loadFile, loadRun, manual, toggleHitl, approveHitl }
 }

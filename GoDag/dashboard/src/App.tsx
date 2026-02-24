@@ -7,7 +7,7 @@ import { Sidebar } from './components/Sidebar'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export function App() {
-  const { state, events, error, transitions, loadFixture, loadFile, loadRun } = useGoDagState()
+  const { state, events, error, transitions, loadFixture, loadFile, loadRun, toggleHitl, approveHitl } = useGoDagState()
   const [view, setView] = useState<'dag' | 'timeline'>('dag')
   const [selected, setSelected] = useState<string | null>(null)
   const [dark, setDark] = useState(() => localStorage.getItem('godag-theme') !== 'light')
@@ -59,9 +59,9 @@ export function App() {
       <Header state={state} view={view} onViewChange={setView} dark={dark} onToggleDark={() => setDark(d => !d)} onLoadFixture={loadFixture} onLoadFile={loadFile} onLoadRun={loadRun} error={error} />
       <div className="flex flex-1 overflow-hidden">
         {view === 'dag'
-          ? <DagView state={state} selected={selected} onSelect={setSelected} transitions={transitions} />
+          ? <DagView state={state} selected={selected} onSelect={setSelected} transitions={transitions} onToggleHitl={toggleHitl} />
           : <TimelineView state={state} onSelect={setSelected} />}
-        <Sidebar state={state} events={events} selected={selected} onSelect={setSelected} />
+        <Sidebar state={state} events={events} selected={selected} onSelect={setSelected} onApproveHitl={approveHitl} />
       </div>
       <AnimatePresence>
         {showBanner && (

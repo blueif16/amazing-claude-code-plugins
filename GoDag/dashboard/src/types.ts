@@ -19,10 +19,11 @@ export interface DagTask {
   acceptance: string
   estimated_complexity: 'small' | 'medium' | 'large'
   agent_role: string
+  hitl?: boolean
 }
 
 export interface TaskRuntime {
-  status: 'pending' | 'blocked' | 'in_progress' | 'done'
+  status: 'pending' | 'blocked' | 'in_progress' | 'done' | 'awaiting_human'
   agent: string | null
   started_at: string | null
   completed_at: string | null
@@ -30,6 +31,8 @@ export interface TaskRuntime {
   acceptance_passed: boolean | null
   acceptance_output: string | null
   summary: string | null
+  decisions: string[]
+  issues: string[]
   retries: number
   files_changed: string[]
 }

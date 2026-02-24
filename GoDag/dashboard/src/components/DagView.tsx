@@ -11,7 +11,7 @@ import type { GoDagState } from '../types'
 const nodeTypes = { task: TaskNode }
 const NODE_W = 220, NODE_H = 64, GAP_X = 80, GAP_Y = 32
 
-function layout(state: GoDagState, transitions: Record<string, 'done' | 'fail'>) {
+function layout(state: GoDagState, transitions: Record<string, 'done' | 'fail'>, onToggleHitl?: (id: string) => void) {
   const g = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}))
   g.setGraph({ rankdir: 'LR', nodesep: GAP_Y, ranksep: GAP_X, marginx: 40, marginy: 40 })
   state.dag.tasks.forEach(t => g.setNode(t.id, { width: NODE_W, height: NODE_H }))
@@ -22,7 +22,7 @@ function layout(state: GoDagState, transitions: Record<string, 'done' | 'fail'>)
     const pos = g.node(t.id)
     return {
       id: t.id, type: 'task', position: { x: pos.x - NODE_W / 2, y: pos.y - NODE_H / 2 },
-      data: { task: t, runtime: state.tasks[t.id], transition: transitions[t.id] },
+      data: { task: t, runtime: state.tasks[t.id], transition: transitions[t.id], onToggleHitl },
     }
   })
 
@@ -30,7 +30,8 @@ function layout(state: GoDagState, transitions: Record<string, 'done' | 'fail'>)
     const fs = state.tasks[f], ts = state.tasks[t]
     let stroke = 'var(--color-edge-2)', animated = false
     if (fs?.status === 'done' && fs.acceptance_passed !== false) {
-      if (ts?.status === 'in_progress') { stroke = 'var(--color-accent)'; animated = true }
+      if (ts?.status === 'awaiting_human') { stroke = 'var(--color-warn)'; animated = true }
+      else if (ts?.status === 'in_progress') { stroke = 'var(--color-accent)'; animated = true }
       else if (ts?.status === 'done') stroke = 'var(--color-ok)'
       else stroke = 'var(--color-ok)'
     }
@@ -48,14 +49,15 @@ interface Props {
   selected: string | null
   onSelect: (id: string) => void
   transitions: Record<string, 'done' | 'fail'>
+  onToggleHitl?: (id: string) => void
 }
 
-export function DagView({ state, selected, onSelect, transitions }: Props) {
+export function DagView({ state, selected, onSelect, transitions, onToggleHitl }: Props) {
   const { initialNodes, initialEdges } = useMemo(() => {
     if (!state) return { initialNodes: [], initialEdges: [] }
-    const { nodes, edges } = layout(state, transitions)
+    const { nodes, edges } = layout(state, transitions, onToggleHitl)
     return { initialNodes: nodes, initialEdges: edges }
-  }, [state, transitions])
+  }, [state, transitions, onToggleHitl])
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
@@ -84,6 +86,7 @@ export function DagView({ state, selected, onSelect, transitions }: Props) {
             const s = n.data?.runtime?.status
             if (s === 'done') return n.data?.runtime?.acceptance_passed !== false ? 'var(--color-ok)' : 'var(--color-danger)'
             if (s === 'in_progress') return 'var(--color-accent)'
+            if (s === 'awaiting_human') return 'var(--color-warn)'
             return 'var(--color-ink-m)'
           }}
           maskColor="rgba(0,0,0,0.55)"

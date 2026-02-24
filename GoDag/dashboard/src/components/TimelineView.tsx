@@ -26,6 +26,7 @@ export function TimelineView({ state, onSelect }: Props) {
         const t = state.tasks[dt.id]
         const cls = t?.status === 'done' ? (t.acceptance_passed !== false ? 'bg-ok-d border border-ok/40' : 'bg-danger-d border border-danger/40')
           : t?.status === 'in_progress' ? 'tl-bar-active border border-accent/30'
+          : t?.status === 'awaiting_human' ? 'bg-warn-d border border-warn/40'
           : 'bg-surf-3 border border-dashed border-ink-m/40'
         const opacity = t?.status === 'blocked' ? 'opacity-30' : ''
         let left = 0, width = 0
