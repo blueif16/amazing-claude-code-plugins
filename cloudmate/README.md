@@ -10,12 +10,12 @@ Copy the skill and command into your project or user-level Claude config:
 
 ```bash
 # User-level (available across all projects)
-cp -r skills/cloudmate ~/.claude/skills/cloudmate
-mkdir -p ~/.claude/commands && cp commands/cl.md ~/.claude/commands/cl.md
+cp -r skills/cmoudmate ~/.claude/skills/cmoudmate
+mkdir -p ~/.claude/commands && cp commands/cm.md ~/.claude/commands/cm.md
 
 # Project-level (team-shared, checked into git)
-cp -r skills/cloudmate .claude/skills/cloudmate
-mkdir -p .claude/commands && cp commands/cl.md .claude/commands/cl.md
+cp -r skills/cmoudmate .claude/skills/cmoudmate
+mkdir -p .claude/commands && cp commands/cm.md .claude/commands/cm.md
 ```
 
 ### Prerequisites
@@ -56,19 +56,19 @@ Without Agent Teams enabled, Level 3 tasks degrade gracefully to sequential suba
 
 ```bash
 # Describe what you want
-/cl add Google OAuth to the login page
+/cm add Google OAuth to the login page
 
 # Plan from a PRD or spec file
-/cl ./docs/feature-spec.md
+/cm ./docs/feature-spec.md
 
 # Check progress
-/cl status
+/cm status
 
 # Resume after a crash or new session
-/cl continue
+/cm continue
 
 # Don't know what to do?
-/cl
+/cm
 ```
 
 ## How It Works
@@ -88,7 +88,7 @@ Your CC row before L3:
 │ CC Slot (claude -w)           │
 └──────────────────────────────┘
 
-After /cl triggers L3:
+After /cm triggers L3:
 ┌───────────────┬──────────────┐
 │ CC Lead       │ Teammate T1   │
 │ (you talk to  │ Teammate T2   │
@@ -173,7 +173,7 @@ CloudMate 设计为在 `claude -w` session 中运行：
 
 1. 打开工作区：`cd ~/your-project && twork`
 2. `Ctrl+Shift+W` 创建新的 CC slot（独立 worktree）
-3. 在该 slot 中运行 `/cl <your task>`
+3. 在该 slot 中运行 `/cm <your task>`
 4. CloudMate 规划并执行（自动选择 L1/L2/L3）
 5. 完成后 merge：
    - `Ctrl+Shift+M` — Merge & Close（routine 任务）
@@ -295,7 +295,7 @@ tmuxinator 的 `setup/work.yml` 保留作为参考，但日常使用 `twork` 即
 已安装。安装步骤：
 
 ```bash
-cp setup/nvim-cloudmate.lua ~/.config/nvim/lua/cloudmate.lua
+cp setup/nvim-cloudmate.lua ~/.config/nvim/lua/cmoudmate.lua
 # 然后在 init.lua 末尾添加: require("cloudmate")
 ```
 
