@@ -105,7 +105,7 @@ export function Sidebar({ state, events, selected, onSelect, onApproveHitl }: Pr
   useEffect(() => { feedRef.current?.scrollTo(0, 0) }, [events.length])
 
   return (
-    <div className="w-[280px] max-xl:w-[240px] max-lg:hidden border-l border-edge-2 flex flex-col bg-surf-1">
+    <div className="w-[260px] max-xl:w-[220px] max-lg:hidden border border-edge-2 rounded-xl flex flex-col bg-surf-1 overflow-hidden">
       <div className="px-3 py-2 text-[9px] font-semibold uppercase tracking-[0.1em] text-ink-m border-b border-edge">Activity</div>
       <div ref={feedRef} className="flex-1 overflow-y-auto">
         <AnimatePresence initial={false}>

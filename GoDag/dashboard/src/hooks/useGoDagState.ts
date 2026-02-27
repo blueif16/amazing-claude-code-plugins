@@ -6,11 +6,14 @@ export function useGoDagState() {
   const [events, setEvents] = useState<LogEvent[]>([])
   const [error, setError] = useState(false)
   const [manual, setManual] = useState(false)
+  const manualRef = useRef(false)
   const prevRef = useRef<Record<string, string>>({})
   const [transitions, setTransitions] = useState<Record<string, 'done' | 'fail'>>({})
 
+  useEffect(() => { manualRef.current = manual }, [manual])
+
   const poll = useCallback(async () => {
-    if (manual) return
+    if (manualRef.current) return
     try {
       const res = await fetch('/state.json?' + Date.now())
       const data: GoDagState = await res.json()
@@ -40,13 +43,13 @@ export function useGoDagState() {
       const lines = text.trim().split('\n').filter(Boolean)
       setEvents(lines.map(l => { try { return JSON.parse(l) } catch { return null } }).filter(Boolean) as LogEvent[])
     } catch {}
-  }, [manual])
+  }, [])
 
   useEffect(() => {
     poll()
-    const id = setInterval(poll, state?.tasks && Object.values(state.tasks).some(t => t.status === 'in_progress') ? 1500 : 4000)
+    const id = setInterval(poll, 1500)
     return () => clearInterval(id)
-  }, [poll, state?.meta?.status])
+  }, [poll])
 
   const loadFixture = useCallback(async (name: string) => {
     const res = await fetch(`/fixtures/${name}.json?` + Date.now())

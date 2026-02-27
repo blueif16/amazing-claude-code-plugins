@@ -87,14 +87,22 @@ customStyle: |
 
 1. **加载风格模板（必须先读取文件）**：
    - **重要**：必须使用 Read 工具读取模板文件，不要自己想象或定义风格规则
-   - 模板文件位于当前命令文件的相对路径 `../templates/` 目录中
+   - **模板文件在插件安装目录内**，不在用户项目中。必须先用 Bash 定位插件根目录：
+     ```bash
+     BCPLUGIN=$(dirname "$(find ~/.claude/plugins -path '*/beautify-commit/templates/normal.md' 2>/dev/null | head -1)" 2>/dev/null)
+     # Fallback for local dev (not installed via marketplace)
+     if [ -z "$BCPLUGIN" ] || [ ! -d "$BCPLUGIN" ]; then
+       BCPLUGIN=$(find . -path '*/beautify-commit/templates' -type d 2>/dev/null | head -1)
+     fi
+     ```
+   - 然后用 Read 工具读取 `$BCPLUGIN/<style>.md`
    - 如果 style 是预设风格（normal/detailed/concise/cute），**必须先读取**对应的模板文件：
-     - `../templates/normal.md` - 正常风格模板
-     - `../templates/detailed.md` - 详细风格模板
-     - `../templates/concise.md` - 简洁风格模板
-     - `../templates/cute.md` - 可爱风格模板
+     - `$BCPLUGIN/normal.md` - 正常风格模板
+     - `$BCPLUGIN/detailed.md` - 详细风格模板
+     - `$BCPLUGIN/concise.md` - 简洁风格模板
+     - `$BCPLUGIN/cute.md` - 可爱风格模板
    - 如果 style 是 custom，使用配置文件中的 `customStyle` 字段内容
-   - **模板文件是风格的唯一定义来源**
+   - **模板文件是风格的唯一定义来源，绝对不要在用户项目中创建 templates 目录**
 
 2. **生成 Commit 消息（严格遵循模板）**：
    - 根据**模板文件中的内容**和 git 变更信息，生成符合该风格的 commit 消息

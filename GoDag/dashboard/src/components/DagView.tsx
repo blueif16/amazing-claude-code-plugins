@@ -66,10 +66,10 @@ export function DagView({ state, selected, onSelect, transitions, onToggleHitl }
 
   const onNodeClick = useCallback((_: unknown, node: Node) => onSelect(node.id), [onSelect])
 
-  if (!state) return <div className="flex-1 flex items-center justify-center text-ink-3 text-sm">Waiting for data...</div>
+  if (!state) return <div className="flex-1 h-full flex items-center justify-center text-ink-3 text-sm">Waiting for data...</div>
 
   return (
-    <div className="flex-1">
+    <div className="flex-1 h-full">
       <ReactFlow
         nodes={nodes} edges={edges}
         onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}

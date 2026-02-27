@@ -4,6 +4,9 @@ settings*.json
 # Node modules (if any)
 node_modules/
 
+# Claude worktrees
+.claude/worktrees/
+
 # OS files
 .DS_Store
 Thumbs.db

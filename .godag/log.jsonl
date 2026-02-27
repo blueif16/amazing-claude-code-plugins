@@ -1,0 +1,8 @@
+{"ts":"2026-02-24T00:00:00.000Z","event":"session_start","data":{"level":3,"strategy":"parallel_fanout"}}
+{"ts":"2026-02-24T00:00:00.000Z","event":"plan_generated","data":{"tasks":["T1","T2","T3","T4","T5"]}}
+{"ts":"2026-02-24T00:00:00.000Z","event":"user_confirmed","data":{}}
+{"ts":"2026-02-24T00:02:00.000Z","event":"task_done","data":{"task":"T1","duration_s":60,"acceptance":"pass","summary":"组件结构完整，8个优化点"}}
+{"ts":"2026-02-24T00:02:10.000Z","event":"task_done","data":{"task":"T2","duration_s":70,"acceptance":"pass","summary":"状态管理完整，轮询稳定性问题"}}
+{"ts":"2026-02-24T00:01:45.000Z","event":"task_done","data":{"task":"T3","duration_s":45,"acceptance":"pass","summary":"API对接完整，错误处理缺失"}}
+{"ts":"2026-02-24T00:02:20.000Z","event":"task_done","data":{"task":"T4","duration_s":80,"acceptance":"pass","summary":"构建完整，包体积需优化"}}
+{"ts":"2026-02-24T00:02:30.000Z","event":"hitl_waiting","data":{"task":"T5"}}

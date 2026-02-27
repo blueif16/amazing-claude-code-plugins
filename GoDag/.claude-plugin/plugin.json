@@ -1,7 +1,7 @@
 {
   "name": "godag",
-  "version": "2.1.0",
-  "description": "From one sentence to a coordinated agent team. Intent → DAG → Execute → Visualize.",
+  "version": "2.2.0",
+  "description": "From one sentence to a coordinated agent team. Intent → DAG → Execute → Browser Verify → Fix Loop.",
   "author": {
     "name": "GoDag Team"
   },
