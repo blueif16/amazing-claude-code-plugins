@@ -2,7 +2,7 @@
 # Squash-merge current worktree branch into main
 # Used by both Merge & Close (+ exit) and Merge & Keep (alone)
 
-CURRENT_DIR=$(pwd)
+CURRENT_DIR="${1:-$(pwd)}"
 BRANCH=$(git branch --show-current 2>/dev/null)
 MAIN_DIR=$(git worktree list | head -1 | awk '{print $1}')
 MAIN_BRANCH=$(git -C "$MAIN_DIR" branch --show-current 2>/dev/null || echo "main")

@@ -120,9 +120,9 @@ main (dev server running, you test here)
 |---|--------|----------|------|
 | 1 | `Ctrl+Shift+C` | `split-window -h 'claude'` | 需要 dev server 的工作（前端、调试） |
 | 2 | `Ctrl+Shift+W` | `split-window -h 'claude -w'` | 其他所有工作（测试、重构、后端） |
-| 3 | `Ctrl+Shift+M` | `send-keys '~/.cc/merge.sh && exit' Enter` | 满意，squash merge 到 main 并关闭 |
-| 4 | `Ctrl+Shift+K` | `send-keys '~/.cc/merge.sh' Enter` | merge 但保留 pane（可能需要修 bug） |
-| 5 | `Ctrl+Shift+D` | `send-keys '~/.cc/discard.sh && exit' Enter` | 丢弃，删除 worktree 和 branch |
+| 3 | `Ctrl+Shift+M` | `run-shell 'echo merge > /tmp/.cc-action-#{pane_id}' \; send-keys '/exit' Enter` | Merge & Close：commit → merge → 关闭 pane |
+| 4 | `Ctrl+Shift+K` | `run-shell -b '~/.cc/merge.sh #{pane_current_path}'` | Merge & Keep：后台 merge，Claude 不退出 |
+| 5 | `Ctrl+Shift+D` | `run-shell 'echo discard > /tmp/.cc-action-#{pane_id}' \; send-keys '/exit' Enter` | Discard & Close：commit → discard → 关闭 pane |
 
 快捷键 3/4/5 需要点击目标 worktree pane 后再按。
 

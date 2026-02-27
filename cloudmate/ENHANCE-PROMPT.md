@@ -2,7 +2,7 @@
 
 You are enhancing a Claude Code skill called CloudMate. The skill lives at:
 - `~/Desktop/amazing-claude-code-plugins/cloudmate/skills/cloudmate/SKILL.md` (main brain)
-- `~/Desktop/amazing-claude-code-plugins/cloudmate/commands/cl.md` (command entry point)
+- `~/Desktop/amazing-claude-code-plugins/cloudmate/commands/cm.md` (command entry point)
 - `~/Desktop/amazing-claude-code-plugins/cloudmate/skills/cloudmate/references/` (on-demand reference files)
 
 ## The Problem
