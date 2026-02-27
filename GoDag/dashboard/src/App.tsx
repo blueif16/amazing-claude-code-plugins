@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useGoDagState } from './hooks/useGoDagState'
 import { Header } from './components/Header'
+import { StatsBar } from './components/StatsBar'
 import { DagView } from './components/DagView'
 import { TimelineView } from './components/TimelineView'
 import { Sidebar } from './components/Sidebar'
@@ -55,12 +56,15 @@ export function App() {
   const total = state ? Object.keys(state.tasks).length : 0
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
+    <div className="h-screen p-3 flex flex-col gap-3 overflow-hidden bg-canvas">
       <Header state={state} view={view} onViewChange={setView} dark={dark} onToggleDark={() => setDark(d => !d)} onLoadFixture={loadFixture} onLoadFile={loadFile} onLoadRun={loadRun} error={error} />
-      <div className="flex flex-1 overflow-hidden">
-        {view === 'dag'
-          ? <DagView state={state} selected={selected} onSelect={setSelected} transitions={transitions} onToggleHitl={toggleHitl} />
-          : <TimelineView state={state} onSelect={setSelected} />}
+      <StatsBar state={state} />
+      <div className="flex flex-1 gap-3 overflow-hidden min-h-0">
+        <div className="flex-1 bg-surf-1 border border-edge-2 rounded-xl overflow-hidden">
+          {view === 'dag'
+            ? <DagView state={state} selected={selected} onSelect={setSelected} transitions={transitions} onToggleHitl={toggleHitl} />
+            : <TimelineView state={state} onSelect={setSelected} />}
+        </div>
         <Sidebar state={state} events={events} selected={selected} onSelect={setSelected} onApproveHitl={approveHitl} />
       </div>
       <AnimatePresence>

@@ -65,6 +65,49 @@ GoDag 内置可视化 Dashboard。当启动 Level 2-3 任务时，GoDag 会问�
 
 Dashboard 是纯本地的（localhost），不需要账号，不上传任何数据。
 
+## Browser Testing
+
+GoDag 自动为涉及 UI 的 task 生成浏览器验收测试，形成完整的 code → browser → fix 循环。
+
+### 工作原理
+
+1. DAG 生成时，触及 UI 的 task 自动获得 `browser_acceptance` 字段
+2. 代码完成后，编排器生成 Playwright 测试脚本并运行
+3. 一个独立的摘要子任务解析结果，写入简洁的 verdict 文件
+4. 如果失败，实现子任务重新 spawn 并读取 verdict 文件修复问题
+5. 所有 task 完成后，运行回归烟雾测试
+
+编排器永远不会看到截图、报错日志或 JSON 结果——这些都由一次性子任务在独立的上下文窗口中处理。
+
+### 前提条件
+
+```bash
+npm init playwright@latest  # 安装 Playwright（如果未安装）
+```
+
+如果 Playwright 未安装，GoDag 会优雅降级到纯 CLI 验收。
+
+### Quality Bar 文件（可选）
+
+在项目根目录创建 `.godag/quality.md` 定义项目级别的质量标准：
+
+```markdown
+# Quality Bars
+## Dev Server
+- Command: `npm run dev`
+- Port: 3000
+
+## Browser Defaults
+- No console errors on any page
+- All /api/* calls return 2xx
+
+## Code Quality
+- `tsc --noEmit` clean
+- `npm run lint` clean
+```
+
+GoDag 会在 DAG 生成时自动读取并继承这些默认值。
+
 ## 设计哲学
 
 - **不造轮子：** tmux、worktree、task claiming 全用 Agent Teams 原生能力
@@ -87,4 +130,8 @@ GoDag 在项目的 `.godag/` 目录下维护状态：
 .godag/log.jsonl
 .godag/dashboard.html
 .godag/.server.pid
+.godag/.devserver.pid
+.godag/tests/
+.godag/context/*-results.json
+.godag/context/*-verdict.md
 ```

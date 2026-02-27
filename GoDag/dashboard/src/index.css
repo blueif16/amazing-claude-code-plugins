@@ -56,12 +56,17 @@ body { background: var(--color-canvas); color: var(--color-ink); transition: bac
 /* React Flow */
 .react-flow__background { opacity: 0.2; }
 .react-flow__controls { background: var(--color-surf-2); border: 1px solid var(--color-edge-2); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); overflow: hidden; }
-.react-flow__controls-button { background: transparent; border-bottom: 1px solid var(--color-edge); fill: var(--color-ink-3); }
-.react-flow__controls-button:hover { background: var(--color-accent-d); fill: var(--color-accent); }
+.react-flow__controls-button { background: transparent; border-bottom: 1px solid var(--color-edge); fill: var(--color-ink-3); color: var(--color-ink-3); }
+.react-flow__controls-button:hover { background: var(--color-accent-d); fill: var(--color-accent); color: var(--color-accent); }
 .react-flow__controls-button:last-child { border-bottom: none; }
+.react-flow__controls-button svg { fill: var(--color-ink-3); }
+.react-flow__controls-button:hover svg { fill: var(--color-accent); }
 .react-flow__minimap { background: var(--color-surf-1) !important; border: 1px solid var(--color-edge-2); border-radius: 8px; }
+.react-flow__minimap-mask { fill: var(--color-canvas); opacity: 0.7; }
 .react-flow__attribution { display: none; }
 .react-flow__edge-path { transition: stroke 0.4s ease; }
+.react-flow__panel { background: transparent !important; }
+.react-flow__pane { background: var(--color-surf-1); }
 
 /* Animations */
 @keyframes node-pulse {

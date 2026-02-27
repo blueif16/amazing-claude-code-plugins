@@ -131,10 +131,54 @@ Give a verdict with one line per criterion. Then give an overall assessment: is 
 
 ---
 
+---
+
+## Test 4: UI task → should generate browser_acceptance
+
+**What it tests:** Does the intent-router auto-generate `browser_acceptance` for tasks that touch UI files, while keeping it off pure-backend tasks?
+
+### CC1 prompt:
+```
+/go add a contact form to the landing page at src/pages/Landing.tsx with name, email, and message fields. The form should POST to /api/contact and show a success toast on 200. Also add the backend route in src/routes/contact.ts. Before executing, write your intent classification, complexity level, and reasoning to .godag/reasoning.md. Show me the plan but do NOT execute.
+```
+
+### Expected behavior:
+- Intent: `implement`
+- Level: 2 (frontend + backend, 2 modules)
+- DAG has 2-3 implementation tasks + integration task
+- Tasks touching `src/pages/Landing.tsx` or UI components HAVE `browser_acceptance` with:
+  - Natural language steps (not CSS selectors)
+  - Console/network assertions
+- Tasks touching only `src/routes/contact.ts` do NOT have `browser_acceptance`
+- Does NOT execute
+
+### CC2 judge prompt:
+```
+You are judging whether GoDag's /go command correctly generates browser_acceptance. Read:
+- .godag/reasoning.md
+- .godag/state.json (or plan output)
+
+Test case: User asked for a contact form (frontend) + API route (backend).
+
+Pass criteria:
+1. Intent classified as "implement" — PASS/FAIL?
+2. Level 2 (not Level 1, crosses modules) — PASS/FAIL?
+3. At least one task has a `browser_acceptance` field — PASS/FAIL?
+4. The browser_acceptance uses natural language steps, NOT CSS selectors — PASS/FAIL?
+5. The browser_acceptance includes console error or network assertions — PASS/FAIL?
+6. The pure backend task (API route) does NOT have browser_acceptance — PASS/FAIL?
+7. It did NOT execute — PASS/FAIL?
+
+Give a verdict with one line per criterion.
+```
+
+---
+
 ## Scoring
 
 - Test 1 checks: **restraint** — does it avoid over-engineering?
 - Test 2 checks: **single-file awareness** — refactor ≠ always complex
 - Test 3 checks: **DAG quality** — real dependencies, real acceptance, real scopes
+- Test 4 checks: **browser testing integration** — auto-generates browser_acceptance for UI tasks only
 
-All 3 pass = `/go`'s intent router is working. Any fail = fix the SKILL.md or go.md logic accordingly.
+All 4 pass = `/go`'s intent router + browser testing integration is working. Any fail = fix the relevant skill/ref files accordingly.

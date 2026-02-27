@@ -7,11 +7,19 @@ function formatDuration(sec: number) {
 interface Props { state: GoDagState | null; onSelect: (id: string) => void }
 
 export function TimelineView({ state, onSelect }: Props) {
-  if (!state) return <div className="flex-1 flex items-center justify-center text-ink-3 text-sm">Waiting for data...</div>
+  if (!state) return <div className="flex-1 h-full flex items-center justify-center text-ink-3 text-sm">Waiting for data...</div>
 
   const start = new Date(state.meta.started_at).getTime()
   const now = Date.now()
-  const end = state.meta.status === 'running' ? now : new Date(state.meta.updated_at).getTime()
+  const hasActive = Object.values(state.tasks).some(t => t.status === 'in_progress')
+  // When no tasks are actively running, use the latest completed_at as the end
+  // instead of Date.now() — prevents the timeline from stretching to infinity
+  const lastCompleted = Object.values(state.tasks)
+    .filter(t => t.completed_at)
+    .reduce((max, t) => Math.max(max, new Date(t.completed_at!).getTime()), start)
+  const end = state.meta.status !== 'running'
+    ? new Date(state.meta.updated_at).getTime()
+    : hasActive ? now : Math.max(lastCompleted, start + 1000)
   const span = Math.max(end - start, 1000)
 
   const ticks = 5

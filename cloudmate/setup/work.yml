@@ -1,0 +1,24 @@
+# CloudMate workspace layout
+# Usage: tmuxinator start work
+# Or with alias: twork work
+#
+# Layout: Neovim on left, CC slot + dev/status on right
+# Additional CC slots added manually with Cmd+Shift+W (max 3 recommended)
+#
+# Copy to: ~/.tmuxinator/work.yml
+# Customize 'root' to your project path, or override with:
+#   PROJECT_DIR=~/my-project tmuxinator start work
+
+name: work
+root: <%= ENV["PROJECT_DIR"] || "." %>
+attach: false
+on_project_exit: tmux -CC attach -t work
+
+windows:
+  - dev:
+      panes:
+        - nvim .                                # left: code viewer
+        - claude -w                             # right top: CC slot 1 (run /cl here)
+        - >-                                    # right bottom: dev server | status
+          tmux split-window -h '~/.cc/status.sh --watch';
+          npm run dev
