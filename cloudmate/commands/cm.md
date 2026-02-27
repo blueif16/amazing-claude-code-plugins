@@ -1,24 +1,24 @@
 ---
-name: cl
+name: cm
 description: "Start, check, or continue any work. Analyzes intent, plans tasks, and orchestrates execution."
 allowed-tools: ["Bash", "Read", "Write", "Task", "Teammate"]
 ---
 
-# /cl — Single Entry Point
+# /cm — Single Entry Point
 
 ## Routing
 
-Parse what follows `/cl`:
+Parse what follows `/cm`:
 
 | Input | Action |
 |-------|--------|
-| `/cl <natural language>` | Plan + execute a task |
-| `/cl <path-to-file.md>` | Read file as PRD, plan from it |
-| `/cl status` | Show current plan status |
-| `/cl continue` | Resume from `.tasks/plan.md` |
-| `/cl` (nothing) | Ask "What do you want to do?" |
+| `/cm <natural language>` | Plan + execute a task |
+| `/cm <path-to-file.md>` | Read file as PRD, plan from it |
+| `/cm status` | Show current plan status |
+| `/cm continue` | Resume from `.tasks/plan.md` |
+| `/cm` (nothing) | Ask "What do you want to do?" |
 
-## Flow: /cl \<description\>
+## Flow: /cm \<description\>
 
 1. Load the `cloudmate` skill
 2. Classify intent (Step 1)
@@ -30,18 +30,18 @@ Parse what follows `/cl`:
    - `n` / `cancel` → Abort.
    - Anything else → Treat as adjustment. Revise plan. Ask again.
 
-## Flow: /cl \<path\>
+## Flow: /cm \<path\>
 
 1. Read the file at path
 2. Extract requirements, constraints, acceptance criteria from it
 3. Skip intent classification — type = `implement`
 4. Continue from complexity assessment (Step 2) onward
 
-## Flow: /cl status
+## Flow: /cm status
 
 1. Find main repo: `MAIN_DIR=$(git worktree list | head -1 | awk '{print $1}')`
 2. List all `$MAIN_DIR/.tasks/*.md` files
-3. If none: "No active plans. Run `/cl <task>` to start."
+3. If none: "No active plans. Run `/cm <task>` to start."
 4. For each plan file, extract header + task statuses and show overview:
    ```
    📊 CloudMate — [N] active
@@ -54,7 +54,7 @@ Parse what follows `/cl`:
    ```
 5. If called from within a worktree, highlight that worktree's plan and show its full ASCII tree from the plan file.
 
-## Flow: /cl continue
+## Flow: /cm continue
 
 1. Find main repo: `MAIN_DIR=$(git worktree list | head -1 | awk '{print $1}')`
 2. Get current branch: `BRANCH=$(git branch --show-current)`
@@ -65,7 +65,7 @@ Parse what follows `/cl`:
 7. Ask: "Continue? (y / adjust / new)"
    - `y` → Rebuild context from completed task summaries in the plan, resume at next unblocked task
    - `adjust` → Show current plan, let user modify, then continue
-   - `new` → Route to bare `/cl`
+   - `new` → Route to bare `/cm`
 
 ## Spawn Prompt Convention
 

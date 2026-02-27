@@ -1,6 +1,6 @@
 ---
 name: cloudmate
-description: "Plan and orchestrate work from a single sentence. Classifies intent, assesses complexity, generates task DAGs with acceptance criteria, and drives execution via subagents (L2) or Agent Teams (L3). Activates on /cl or when the user describes a non-trivial task."
+description: "Plan and orchestrate work from a single sentence. Classifies intent, assesses complexity, generates task DAGs with acceptance criteria, and drives execution via subagents (L2) or Agent Teams (L3). Activates on /cm or when the user describes a non-trivial task."
 allowed-tools: ["Bash", "Read", "Write", "Task", "Teammate"]
 ---
 
