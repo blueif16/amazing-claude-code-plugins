@@ -172,15 +172,9 @@ feat/jwt-auth | curious-dazzling-pike ↑3 | ctx:34%
 
 `ctx:%` 是最关键的指标——接近 80% 时 Claude 会自动压缩上下文，可能丢失关键信息。
 
-### Lazygit Popup（tmux 浮窗 Git）
+### Lazygit 浮窗（iTerm2 Hotkey Window）
 
-一个快捷键，任何 pane 内弹出浮窗 lazygit。添加到 `~/.tmux.conf`：
-
-```bash
-bind g popup -d '#{pane_current_path}' -w 90% -h 90% -E 'lazygit'
-```
-
-`prefix + g` 从任何地方——Claude Code、nvim、shell——弹出浮窗。`q` 关闭，回到原位。
+一个快捷键，浮窗弹出 lazygit，自动定位到当前 CC pane 的 worktree。兼容 iTerm2 `-CC` tmux 集成模式。
 
 安装 lazygit：
 
@@ -188,11 +182,29 @@ bind g popup -d '#{pane_current_path}' -w 90% -h 90% -E 'lazygit'
 brew install lazygit
 ```
 
-重载 tmux 配置：
+脚本安装（已预装在 `~/.claude/lazygit-popup.sh`）：
 
 ```bash
-tmux source ~/.tmux.conf
+cat << 'EOF' > ~/.claude/lazygit-popup.sh
+#!/bin/zsh
+DIR=$(/opt/homebrew/bin/tmux list-panes -a -F "#{pane_activity} #{pane_current_path}" 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
+cd "${DIR:-$HOME}"
+exec /opt/homebrew/bin/lazygit
+EOF
+chmod +x ~/.claude/lazygit-popup.sh
 ```
+
+`pane_activity` 是每个 pane 最后一次 I/O 的 unix 时间戳。你正在看的 CC agent 一定有最高值（因为它在持续输出），所以 lazygit 总能打开正确的 worktree。无需 hook，无需焦点追踪。
+
+配置 iTerm2：
+
+1. Settings → Profiles → `+` 新建 profile，命名 `lazygit`
+2. General → Command → 选 `Command`，填入 `/Users/你的用户名/.claude/lazygit-popup.sh`
+3. Keys → Hotkey Window → 勾选 "A hotkey opens a dedicated window with this profile"
+4. 设置快捷键，如 `Cmd+G`
+5. 可选：勾选 "Floating window" 保持置顶
+
+`Cmd+G` 从任何地方弹出浮窗 lazygit，自动进入当前聚焦 pane 的工作目录。`q` 或再按 `Cmd+G` 关闭。`exec` 直接替换 shell 进程，无残留。
 
 ### 脚本安装
 
