@@ -116,15 +116,25 @@ main (dev server running, you test here)
 
 在 iTerm2 → Settings → Keys → Key Bindings 中配置，Action 选 "Send Text with tmux"。
 
+在 iTerm2 → Settings → Keys → Key Bindings 中配置。Action 选 "Send tmux command"。快捷键 3/5 需要配置为两条命令的 sequence。
+
 | # | 快捷键 | tmux 命令 | 用途 |
 |---|--------|----------|------|
 | 1 | `Ctrl+Shift+C` | `split-window -h 'claude'` | 需要 dev server 的工作（前端、调试） |
 | 2 | `Ctrl+Shift+W` | `split-window -h 'claude -w'` | 其他所有工作（测试、重构、后端） |
-| 3 | `Ctrl+Shift+M` | `run-shell 'echo merge > /tmp/.cc-action-#{pane_id}' \; send-keys '/exit' Enter` | Merge & Close：commit → merge → 关闭 pane |
+| 3 | `Ctrl+Shift+M` | 见下方 | Merge & Close：commit → merge → 关闭 pane |
 | 4 | `Ctrl+Shift+K` | `run-shell -b '~/.cc/merge.sh #{pane_current_path}'` | Merge & Keep：后台 merge，Claude 不退出 |
-| 5 | `Ctrl+Shift+D` | `run-shell 'echo discard > /tmp/.cc-action-#{pane_id}' \; send-keys '/exit' Enter` | Discard & Close：commit → discard → 关闭 pane |
+| 5 | `Ctrl+Shift+D` | 见下方 | Discard & Close：commit → discard → 关闭 pane |
 
-快捷键 3/4/5 需要点击目标 worktree pane 后再按。
+**Ctrl+Shift+M** (Merge & Close) — 两条 "Send tmux command" sequence：
+1. `run-shell 'echo merge > /tmp/.cc-action-#{pane_id}'`
+2. `send-keys '/exit' Enter`
+
+**Ctrl+Shift+D** (Discard & Close) — 两条 "Send tmux command" sequence：
+1. `run-shell 'echo discard > /tmp/.cc-action-#{pane_id}'`
+2. `send-keys '/exit' Enter`
+
+快捷键 3/4/5 需要点击目标 worktree pane 后再按。非 worktree session 下 merge/discard 脚本会被安全检查拦住，只做 safety commit 后关闭 pane。
 
 ### 脚本安装
 
