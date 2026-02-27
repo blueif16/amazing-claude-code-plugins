@@ -136,6 +136,64 @@ main (dev server running, you test here)
 
 快捷键 3/4/5 需要点击目标 worktree pane 后再按。非 worktree session 下 merge/discard 脚本会被安全检查拦住，只做 safety commit 后关闭 pane。
 
+### Statusline（Agent 状态追踪）
+
+多 worktree 并发时，一眼看清每个 agent 的状态。在 `~/.claude/settings.json` 中配置：
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/statusline.sh"
+  }
+}
+```
+
+脚本安装：
+
+```bash
+# 脚本已预装在 ~/.claude/statusline.sh
+# 如需重新安装：
+cp setup/statusline.sh ~/.claude/statusline.sh
+chmod +x ~/.claude/statusline.sh
+```
+
+输出格式：
+
+```
+feat/jwt-auth | curious-dazzling-pike ↑3 ●2 ✚1 ⇣4 | ctx:34%
+```
+
+从左到右：branch 名、worktree 目录名、commits ahead（agent 产出量）、dirty 文件数、staged 文件数、behind remote、context 使用百分比。干净状态只显示核心信息：
+
+```
+feat/jwt-auth | curious-dazzling-pike ↑3 | ctx:34%
+```
+
+`ctx:%` 是最关键的指标——接近 80% 时 Claude 会自动压缩上下文，可能丢失关键信息。
+
+### Lazygit Popup（tmux 浮窗 Git）
+
+一个快捷键，任何 pane 内弹出浮窗 lazygit。添加到 `~/.tmux.conf`：
+
+```bash
+bind g popup -d '#{pane_current_path}' -w 90% -h 90% -E 'lazygit'
+```
+
+`prefix + g` 从任何地方——Claude Code、nvim、shell——弹出浮窗。`q` 关闭，回到原位。
+
+安装 lazygit：
+
+```bash
+brew install lazygit
+```
+
+重载 tmux 配置：
+
+```bash
+tmux source ~/.tmux.conf
+```
+
 ### 脚本安装
 
 ```bash
