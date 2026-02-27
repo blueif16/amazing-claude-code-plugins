@@ -1,7 +1,7 @@
 #!/bin/bash
 # Discard worktree and clean up — called with && exit to close pane
 
-CURRENT_DIR=$(pwd)
+CURRENT_DIR="${1:-$(pwd)}"
 BRANCH=$(git branch --show-current 2>/dev/null)
 MAIN_DIR=$(git worktree list | head -1 | awk '{print $1}')
 

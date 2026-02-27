@@ -106,7 +106,7 @@ render_overview() {
   if [ ! -f "${files[0]}" ] 2>/dev/null; then
     echo -e "${DIM}╔══════════════════════════════════════╗${R}"
     echo -e "${DIM}║${R}  ${BOLD}CloudMate${R} — no active plans        ${DIM}║${R}"
-    echo -e "${DIM}║${R}  Run ${CYAN}/cl <task>${R} in a CC slot         ${DIM}║${R}"
+    echo -e "${DIM}║${R}  Run ${CYAN}/cm <task>${R} in a CC slot         ${DIM}║${R}"
     echo -e "${DIM}╚══════════════════════════════════════╝${R}"
     return
   fi
