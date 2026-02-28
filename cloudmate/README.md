@@ -10,11 +10,11 @@ Copy the skill and command into your project or user-level Claude config:
 
 ```bash
 # User-level (available across all projects)
-cp -r skills/cmoudmate ~/.claude/skills/cmoudmate
+cp -r skills/cloudmate ~/.claude/skills/cloudmate
 mkdir -p ~/.claude/commands && cp commands/cm.md ~/.claude/commands/cm.md
 
 # Project-level (team-shared, checked into git)
-cp -r skills/cmoudmate .claude/skills/cmoudmate
+cp -r skills/cloudmate .claude/skills/cloudmate
 mkdir -p .claude/commands && cp commands/cm.md .claude/commands/cm.md
 ```
 
@@ -375,7 +375,7 @@ tmuxinator 的 `setup/work.yml` 保留作为参考，但日常使用 `twork` 即
 已安装。安装步骤：
 
 ```bash
-cp setup/nvim-cloudmate.lua ~/.config/nvim/lua/cmoudmate.lua
+cp setup/nvim-cloudmate.lua ~/.config/nvim/lua/cloudmate.lua
 # 然后在 init.lua 末尾添加: require("cloudmate")
 ```
 
