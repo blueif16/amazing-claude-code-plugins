@@ -60,10 +60,15 @@ log "Dispatching action=$ACTION"
 case "$ACTION" in
     pr)
         log "Starting PR creation in background"
-        # Run in detached tmux session
+        # Run in detached tmux session (non-blocking)
         tmux new-session -d -s "pr-$(date +%s)" \
             "cd '$WORKTREE_DIR' && ~/.cc/open_pr.sh '$WORKTREE_DIR' 2>&1 | tee -a '$LOG'"
         log "PR creation started in background session"
+
+        # Foreground mode (blocking) - uncomment to revert:
+        # log "Calling open_pr.sh"
+        # ~/.cc/open_pr.sh "$WORKTREE_DIR" 2>&1 | tee -a "$LOG"
+        # log "open_pr.sh exit code=${PIPESTATUS[0]}"
         ;;
     discard)
         log "Calling discard.sh"
