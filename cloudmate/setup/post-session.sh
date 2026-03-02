@@ -59,9 +59,11 @@ log "Commits ahead of $MAIN_BRANCH: $AHEAD"
 log "Dispatching action=$ACTION"
 case "$ACTION" in
     pr)
-        log "Calling open_pr.sh"
-        ~/.cc/open_pr.sh "$WORKTREE_DIR" 2>&1 | tee -a "$LOG"
-        log "open_pr.sh exit code=${PIPESTATUS[0]}"
+        log "Starting PR creation in background"
+        # Run in detached tmux session
+        tmux new-session -d -s "pr-$(date +%s)" \
+            "cd '$WORKTREE_DIR' && ~/.cc/open_pr.sh '$WORKTREE_DIR' 2>&1 | tee -a '$LOG'"
+        log "PR creation started in background session"
         ;;
     discard)
         log "Calling discard.sh"
