@@ -12,6 +12,9 @@ PANE_ID="$1"
 ACTION_FILE="/tmp/.cc-action-${PANE_ID}"
 DIR_FILE="/tmp/.cc-dir-${PANE_ID}"
 
+log "=== post-session started ==="
+log "PANE_ID=$PANE_ID"
+
 # Try to get directory from temp file (written by shortcut before /exit)
 if [ -f "$DIR_FILE" ]; then
     WORKTREE_DIR=$(cat "$DIR_FILE")
@@ -21,12 +24,6 @@ else
     WORKTREE_DIR=$(pwd)
 fi
 
-log "=== post-session started ==="
-log "PANE_ID=$PANE_ID"
-log "WORKTREE_DIR=$WORKTREE_DIR"
-log "BRANCH=$(git branch --show-current 2>/dev/null)"
-log "ACTION_FILE=$ACTION_FILE exists=$([ -f "$ACTION_FILE" ] && echo yes || echo no)"
-
 # ── Read action, default to "pr" ──────────────────────────────
 ACTION="pr"
 if [ -f "$ACTION_FILE" ]; then
@@ -35,8 +32,17 @@ if [ -f "$ACTION_FILE" ]; then
 fi
 log "ACTION=$ACTION"
 
+# ── Change to worktree directory FIRST ──────────────────────────
+cd "$WORKTREE_DIR" || {
+    log "ERROR: Cannot cd to $WORKTREE_DIR"
+    exit 1
+}
+
+log "WORKTREE_DIR=$WORKTREE_DIR"
+log "BRANCH=$(git branch --show-current 2>/dev/null)"
+log "ACTION_FILE=$ACTION_FILE exists=$([ -f "$ACTION_FILE" ] && echo yes || echo no)"
+
 # ── Safety commit (always, regardless of action) ──────────────
-cd "$WORKTREE_DIR"
 git add -A 2>/dev/null
 if ! git diff-index --quiet HEAD 2>/dev/null; then
     log "Uncommitted changes found, doing safety commit"
