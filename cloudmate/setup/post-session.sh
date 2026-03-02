@@ -59,11 +59,16 @@ log "Commits ahead of $MAIN_BRANCH: $AHEAD"
 log "Dispatching action=$ACTION"
 case "$ACTION" in
     pr)
-        log "Starting PR creation in background"
+        SESSION_NAME="pr-$(date +%s)"
+        log "Starting PR creation in background session: $SESSION_NAME"
+        log "Watch progress: tail -f $LOG"
+
         # Run in detached tmux session (non-blocking)
-        tmux new-session -d -s "pr-$(date +%s)" \
+        tmux new-session -d -s "$SESSION_NAME" \
             "cd '$WORKTREE_DIR' && ~/.cc/open_pr.sh '$WORKTREE_DIR' 2>&1 | tee -a '$LOG'"
-        log "PR creation started in background session"
+
+        log "PR creation started in background"
+        log "To attach: tmux attach -t $SESSION_NAME"
 
         # Foreground mode (blocking) - uncomment to revert:
         # log "Calling open_pr.sh"
