@@ -9,16 +9,17 @@ LOG="/tmp/cc-post-session.log"
 log() { echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG"; }
 
 PANE_ID="$1"
-# Try to get directory from temp file first (written by Claude on exit)
-# Fall back to tmux query, then pwd
+ACTION_FILE="/tmp/.cc-action-${PANE_ID}"
 DIR_FILE="/tmp/.cc-dir-${PANE_ID}"
+
+# Try to get directory from temp file (written by shortcut before /exit)
 if [ -f "$DIR_FILE" ]; then
     WORKTREE_DIR=$(cat "$DIR_FILE")
     rm -f "$DIR_FILE"
 else
-    WORKTREE_DIR=$(tmux display-message -p -t "$PANE_ID" "#{pane_current_path}" 2>/dev/null || pwd)
+    # Fallback to pwd
+    WORKTREE_DIR=$(pwd)
 fi
-ACTION_FILE="/tmp/.cc-action-${PANE_ID}"
 
 log "=== post-session started ==="
 log "PANE_ID=$PANE_ID"
