@@ -9,7 +9,7 @@ LOG="/tmp/cc-post-session.log"
 log() { echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG"; }
 
 PANE_ID="$1"
-WORKTREE_DIR=$(pwd)
+WORKTREE_DIR=$(tmux display-message -p -t "$PANE_ID" "#{pane_current_path}" 2>/dev/null || pwd)
 ACTION_FILE="/tmp/.cc-action-${PANE_ID}"
 
 log "=== post-session started ==="
