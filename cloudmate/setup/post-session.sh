@@ -64,8 +64,9 @@ case "$ACTION" in
         log "Watch progress: tail -f $LOG"
 
         # Run in detached tmux session (non-blocking)
+        # Note: open_pr.sh logs directly to $LOG, no need for tee
         tmux new-session -d -s "$SESSION_NAME" \
-            "cd '$WORKTREE_DIR' && ~/.cc/open_pr.sh '$WORKTREE_DIR' 2>&1 | tee -a '$LOG'"
+            "cd '$WORKTREE_DIR' && ~/.cc/open_pr.sh '$WORKTREE_DIR'"
 
         log "PR creation started in background"
         log "To attach: tmux attach -t $SESSION_NAME"
