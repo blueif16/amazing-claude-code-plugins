@@ -114,27 +114,24 @@ main (dev server running, you test here)
 
 ### 5 个快捷键
 
-在 iTerm2 → Settings → Keys → Key Bindings 中配置，Action 选 "Send Text with tmux"。
-
-在 iTerm2 → Settings → Keys → Key Bindings 中配置。Action 选 "Send tmux command"。快捷键 3/5 需要配置为两条命令的 sequence。
+在 iTerm2 → Settings → Keys → Key Bindings 中配置。Action 选 "Send tmux command"。快捷键 3/4/5 需要配置为两条命令的 sequence。
 
 | # | 快捷键 | tmux 命令 | 用途 |
 |---|--------|----------|------|
 | 1 | `Ctrl+Shift+C` | `split-window -h 'claude'` | 需要 dev server 的工作（前端、调试） |
-| 2 | `Ctrl+Shift+W` | `split-window -h 'claude -w'` | 其他所有工作（测试、重构、后端） |
-| 3 | `Ctrl+Shift+M` | 见下方 | Merge & Close：commit → merge → 关闭 pane |
-| 4 | `Ctrl+Shift+K` | `run-shell -b '~/.cc/merge.sh #{pane_current_path}'` | Merge & Keep：后台 merge，Claude 不退出 |
-| 5 | `Ctrl+Shift+D` | 见下方 | Discard & Close：commit → discard → 关闭 pane |
+| 2 | `Ctrl+Shift+W` | `split-window -h 'claude -w; ~/.cc/post-session.sh $TMUX_PANE'` | 其他所有工作（测试、重构、后端） |
+| 3 | `Cmd+Shift+P` | 见下方 | Ship PR：commit → push → create PR |
+| 4 | `Ctrl+Shift+D` | 见下方 | Discard & Close：commit → discard → 关闭 pane |
 
-**Ctrl+Shift+M** (Merge & Close) — 两条 "Send tmux command" sequence：
-1. `run-shell 'echo merge > /tmp/.cc-action-#{pane_id}'`
-2. `send-keys '/exit' Enter`
+**Cmd+Shift+P** (Ship PR) — 两条 "Send tmux command" sequence：
+1. `run-shell 'echo pr > /tmp/.cc-action-#{pane_id}'`
+2. `run-shell "~/.cc/send-exit.sh #{pane_id}"`
 
 **Ctrl+Shift+D** (Discard & Close) — 两条 "Send tmux command" sequence：
 1. `run-shell 'echo discard > /tmp/.cc-action-#{pane_id}'`
 2. `send-keys '/exit' Enter`
 
-快捷键 3/4/5 需要点击目标 worktree pane 后再按。非 worktree session 下 merge/discard 脚本会被安全检查拦住，只做 safety commit 后关闭 pane。
+快捷键 3/4 需要点击目标 worktree pane 后再按。非 worktree session 下脚本会被安全检查拦住，只做 safety commit 后关闭 pane。
 
 ### Statusline（Agent 状态追踪）
 
@@ -209,20 +206,18 @@ chmod +x ~/.claude/lazygit-popup.sh
 ### 脚本安装
 
 ```bash
-# ~/.cc/merge.sh 和 ~/.cc/discard.sh 已预装
+# ~/.cc/ 脚本已预装
 # 如需重新安装：
 mkdir -p ~/.cc
-cp setup/merge.sh ~/.cc/merge.sh
+cp setup/send-exit.sh ~/.cc/send-exit.sh
+cp setup/post-session.sh ~/.cc/post-session.sh
+cp setup/open_pr.sh ~/.cc/open_pr.sh
 cp setup/discard.sh ~/.cc/discard.sh
+cp setup/fix-cr.sh ~/.cc/fix-cr.sh
 chmod +x ~/.cc/*.sh
 ```
 
-`merge.sh` 自动从 worktree 的 commit 历史生成 squash commit message，无需手动命名：
-```
-a]4f2c1 merge: refactor intent router; add edge case handling
-b]8e3a7 merge: write integration tests for DAG generation
-c]1d9b2 merge: fix OAuth callback for custom domains
-```
+`open_pr.sh` 自动推送分支并创建 PR，支持 CodeRabbit 预审查和自动修复。
 
 ### Hooks（全局）
 
@@ -255,22 +250,21 @@ CloudMate 设计为在 `claude -w` session 中运行：
 2. `Ctrl+Shift+W` 创建新的 CC slot（独立 worktree）
 3. 在该 slot 中运行 `/cm <your task>`
 4. CloudMate 规划并执行（自动选择 L1/L2/L3）
-5. 完成后 merge：
-   - `Ctrl+Shift+M` — Merge & Close（routine 任务）
-   - `Ctrl+Shift+K` — Merge & Keep（careful 任务，先测试）
+5. 完成后：
+   - `Cmd+Shift+P` — Ship PR（推送并创建 PR）
    - `Ctrl+Shift+D` — Discard & Close（丢弃）
 
 最多 3 个 CC slot 并发运行独立任务，每个 slot 可独立为 L1、L2 或 L3。
 
-### Risk Tiers → Merge Strategy
+### Risk Tiers → Workflow
 
-CloudMate 为每个任务标记风险等级，对应你的 merge 决策：
+CloudMate 为每个任务标记风险等级，对应你的工作流程：
 
 | Tier | 含义 | 操作 |
 |------|------|------|
-| `routine` | 低风险，易回滚 | Merge & Close |
-| `careful` | 用户可见变更 | Merge & Keep，先测试 |
-| `critical` | 不可逆、安全、数据 | Review diff before merge |
+| `routine` | 低风险，易回滚 | Ship PR 后直接 merge |
+| `careful` | 用户可见变更 | Ship PR，review 后 merge |
+| `critical` | 不可逆、安全、数据 | Ship PR，thorough review + test 后 merge |
 
 ## State & Status
 
@@ -345,13 +339,122 @@ Zoom into the status pane with `Cmd+Shift+Enter` (iTerm2 maximize pane) for a fu
 2. **Neovim** — `<leader>cp` opens plan.md; mermaid renders with a markdown preview plugin
 3. **GitHub** — push the branch; mermaid renders natively in the markdown
 
+## Automated PR Review Pipeline
+
+CodeRabbit + Claude Code Action provide a two-layer automated review pipeline. Code gets reviewed before the PR is created (CLI) and after (GitHub App), with automatic fixes applied at both stages.
+
+### Pipeline Flow
+
+```
+Cmd+Shift+P pressed
+  ↓
+post-session.sh → open_pr.sh
+  ↓
+git push
+  ↓
+🐇 CodeRabbit CLI review (--prompt-only, up to 2 rounds)
+  ├── clean? → skip to /ship
+  └── issues? → CC fixes → push → review again
+       ↓
+claude -p "/ship" → PR created
+  ↓
+[GitHub takes over]
+  ├── CodeRabbit App: walkthrough + inline review + auto-summary
+  ├── Claude Code Action: architecture-aware review (@claude mentions)
+  └── Autofix Action: bot comments → CC pushes fix commits
+       ↓
+You open GitHub → see clean, documented PRs
+  ├── ~/.cc/fix-cr.sh → pulls all CR comments, local CC fixes, pushes
+  ├── @coderabbitai "generate unit tests" → tests generated
+  ├── (optional) @claude "fix this" → cloud CC pushes a fix (needs API key)
+  └── Merge when satisfied
+```
+
+### Setup
+
+```bash
+# Run from your project root
+bash path/to/cloudmate/setup/setup-coderabbit.sh .
+```
+
+This installs CodeRabbit CLI, creates `.coderabbit.yaml`, and adds GitHub Actions workflows. You still need to:
+
+1. Install the [CodeRabbit GitHub App](https://github.com/apps/coderabbitai) and grant repo access
+2. Add `ANTHROPIC_API_KEY` to GitHub Secrets (Settings → Secrets → Actions)
+3. (Optional) Install Claude GitHub App: run `/install-github-app` in Claude Code
+4. Commit and push: `git add .coderabbit.yaml .github/ && git commit -m 'feat: add review pipeline' && git push`
+
+### What You See on GitHub
+
+On every PR:
+
+- **PR description** — auto-generated walkthrough with file tree and summary (CodeRabbit replaces `@coderabbitai summary` placeholder)
+- **PR title** — auto-generated when `@coderabbitai` is in the title
+- **Inline review comments** — line-by-line suggestions with one-click "commit suggestion" buttons
+- **Architecture review** — Claude Code Action checks cross-file dependencies, only flags critical issues
+- **Autofix commits** — Claude auto-pushes fixes for straightforward bot findings
+
+### GitHub PR Commands
+
+| Command | What happens |
+|---------|-------------|
+| `~/.cc/fix-cr.sh` | Pulls all CR comments, local CC fixes, pushes (no cloud key) |
+| `~/.cc/fix-cr.sh --dry-run` | Preview the prompt CC would receive |
+| `@coderabbitai review` | Incremental re-review of new changes |
+| `@coderabbitai full review` | Complete review from scratch |
+| `@coderabbitai generate unit testing code for this file` | Generates tests inline |
+| `@coderabbitai resolve` | Resolves all CodeRabbit review comments |
+| Reply to any CodeRabbit comment | CodeRabbit learns your preferences for future reviews |
+| `@claude fix this` | Cloud CC pushes a fix commit (needs `claude.yml` + API key) |
+
+### Configuration
+
+Customize `.coderabbit.yaml` in your project root. Key settings:
+
+- `reviews.profile`: `"assertive"` (thorough) or `"chill"` (lighter feedback)
+- `reviews.path_instructions`: per-directory review rules (components, API routes, tests)
+- `reviews.auto_review.enabled`: auto-review on every PR push
+- `chat.auto_reply`: CodeRabbit responds to comment threads automatically
+
+CodeRabbit also reads your `CLAUDE.md` and `agent.md` files for project context.
+
+### Fixing CR Comments Locally
+
+After CodeRabbit reviews your PR on GitHub, fix all findings with one command:
+
+```bash
+# From the worktree branch (auto-detects PR)
+~/.cc/fix-cr.sh
+
+# Or specify PR number
+~/.cc/fix-cr.sh 5
+
+# Preview what CC would receive
+~/.cc/fix-cr.sh --dry-run
+```
+
+This pulls all CodeRabbit review comments via `gh` API, builds a consolidated fix prompt, runs local CC to fix them, and pushes. No cloud API key needed.
+
+### Files
+
+- `setup/setup-coderabbit.sh` — one-shot setup (CLI + config + GitHub Actions)
+- `setup/fix-cr.sh` — pull CR comments from GitHub, fix locally with CC, push
+- `.coderabbit.yaml` — review configuration (created per-project by setup script)
+- `.github/workflows/claude.yml` — Claude Code Action (interactive + auto-review, optional)
+- `.github/workflows/autofix.yml` — auto-fix bot review comments via Claude (optional)
+
 ## Setup Files (Optional)
 
-- `setup/merge.sh` — squash-merge worktree branch 到 main。Copy to `~/.cc/merge.sh`
+- `setup/send-exit.sh` — 捕获 worktree 目录并发送 /exit。Symlink to `~/.cc/send-exit.sh`
+- `setup/post-session.sh` — 处理 PR 工作流。Symlink to `~/.cc/post-session.sh`
+- `setup/open_pr.sh` — 推送分支并创建 PR。Symlink to `~/.cc/open_pr.sh`
 - `setup/discard.sh` — 丢弃 worktree 并清理 branch。Copy to `~/.cc/discard.sh`
 - `setup/status.sh` — interactive terminal status viewer for the status pane. Copy to `~/.cc/status.sh`
+- `setup/setup-coderabbit.sh` — CodeRabbit CLI + GitHub Actions setup. Run from project root.
+- `setup/fix-cr.sh` — pull CR review comments from GitHub PR, fix with local CC, push. Symlink to `~/.cc/fix-cr.sh`
 - `setup/work.yml` — tmuxinator 模板（仅供参考，推荐用 `twork` 替代）
 - `setup/nvim-cloudmate.lua` — minimal Neovim config for watching agent file changes across worktrees
+- `setup/PR-WORKFLOW.md` — 完整的 PR 工作流文档
 
 ### twork（推荐）
 
@@ -396,9 +499,10 @@ cp setup/nvim-cloudmate.lua ~/.config/nvim/lua/cloudmate.lua
 
 ## Design Philosophy
 
-- **No runtime.** CloudMate is pure planning. Agent Teams handles execution. Your merge scripts handle integration.
+- **No runtime.** CloudMate is pure planning. Agent Teams handles execution. PRs handle integration.
 - **No dashboard server.** `status.sh` reads markdown files. That's it.
 - **No custom orchestration.** Agent Teams' native task list, self-claim, and teammate messaging are used directly.
 - **Complexity gating.** Most work is L1-2. CloudMate prevents token waste on unnecessary Agent Teams.
 - **Acceptance criteria on every task.** Agents without verification solve the wrong problem.
+- **PR-based workflow.** All worktree work goes through GitHub PRs for review and merge.
 - **~390 lines of prompt across 4 files.** Lean enough that Claude's instruction-following stays sharp.
