@@ -1,0 +1,37 @@
+# CodeRabbit Configuration
+# https://docs.coderabbit.ai/reference/configuration
+
+reviews:
+  profile: "chill"
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  auto_review:
+    enabled: true
+    drafts: false
+  tools:
+    shellcheck:
+      enabled: true
+    ruff:
+      enabled: true
+    markdownlint:
+      enabled: true
+    github-checks:
+      enabled: true
+      timeout: 90
+  path_filters:
+    - "!**/node_modules/**"
+    - "!**/.git/**"
+    - "!**/dist/**"
+    - "!**/build/**"
+    - "!**/*.min.js"
+    - "!**/*.min.css"
+
+chat:
+  auto_reply: true
+
+language: "en-US"
+early_access: false
+enable_free_tier: true

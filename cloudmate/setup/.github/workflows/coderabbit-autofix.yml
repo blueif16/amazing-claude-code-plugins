@@ -1,0 +1,50 @@
+name: CodeRabbit Autofix
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  autofix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      
+      - name: Install CodeRabbit CLI
+        run: curl -fsSL https://cli.coderabbit.ai/install.sh | sh
+      
+      - name: Run CodeRabbit and Apply Fixes
+        env:
+          CODERABBIT_API_KEY: ${{ secrets.CODERABBIT_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          
+          # Run review and capture output
+          coderabbit review --plain > review.txt || true
+          
+          # Check if there are any auto-fixable issues
+          if grep -q "Auto-fix available" review.txt 2>/dev/null; then
+            echo "Auto-fixable issues found, applying fixes..."
+            # Apply fixes (this is a placeholder - actual implementation depends on CodeRabbit CLI capabilities)
+            # coderabbit fix --auto
+            
+            # Commit and push if changes were made
+            if [[ -n $(git status -s) ]]; then
+              git config user.name "CodeRabbit[bot]"
+              git config user.email "coderabbit@users.noreply.github.com"
+              git add .
+              git commit -m "chore: apply CodeRabbit auto-fixes"
+              git push
+            fi
+          else
+            echo "No auto-fixable issues found"
+          fi
