@@ -32,7 +32,12 @@ Cmd+Shift+P pressed
   ↓
 5. open_pr.sh:
    - Push branch to GitHub
+   - CodeRabbit CLI review (--prompt-only, up to 2 rounds)
+     - If issues found: spawn CC to fix, push, review again
+     - If clean or max rounds reached: proceed
    - Create PR via claude -p "/ship"
+   - [GitHub] CodeRabbit App auto-reviews + Claude Action reviews
+   - [GitHub] Autofix Action pushes fix commits for bot findings
 ```
 
 ### Why This Approach?
@@ -63,6 +68,7 @@ mkdir -p ~/.cc
 ln -sf "$(pwd)/cloudmate/setup/send-exit.sh" ~/.cc/send-exit.sh
 ln -sf "$(pwd)/cloudmate/setup/post-session.sh" ~/.cc/post-session.sh
 ln -sf "$(pwd)/cloudmate/setup/open_pr.sh" ~/.cc/open_pr.sh
+ln -sf "$(pwd)/cloudmate/setup/fix-cr.sh" ~/.cc/fix-cr.sh
 
 # Make executable
 chmod +x ~/.cc/*.sh

@@ -102,10 +102,22 @@ task_status_line() {
 # ── Overview screen ───────────────────────────────────
 render_overview() {
   clear
+
+  # Check for active PR workflow
+  local pr_status=""
+  if [ -f "/tmp/.cc-pr-status" ]; then
+    local branch stage timestamp
+    IFS='|' read -r branch stage timestamp < /tmp/.cc-pr-status
+    pr_status="${YELLOW}🔄${R} PR: ${branch##*-} - ${stage//_/ } (${timestamp})"
+  fi
+
   local files=("$TASKS_DIR"/*.md)
   if [ ! -f "${files[0]}" ] 2>/dev/null; then
     echo -e "${DIM}╔══════════════════════════════════════╗${R}"
     echo -e "${DIM}║${R}  ${BOLD}CloudMate${R} — no active plans        ${DIM}║${R}"
+    if [ -n "$pr_status" ]; then
+      echo -e "${DIM}║${R}  $pr_status"
+    fi
     echo -e "${DIM}║${R}  Run ${CYAN}/cm <task>${R} in a CC slot         ${DIM}║${R}"
     echo -e "${DIM}╚══════════════════════════════════════╝${R}"
     return
@@ -119,6 +131,9 @@ render_overview() {
   local count=${#active_files[@]}
   echo -e "${DIM}╔══════════════════════════════════════════════╗${R}"
   echo -e "${DIM}║${R}  ${BOLD}CloudMate${R} — ${WHITE}${count} plan(s)${R}                       ${DIM}║${R}"
+  if [ -n "$pr_status" ]; then
+    echo -e "${DIM}║${R}  $pr_status"
+  fi
   echo -e "${DIM}╠══════════════════════════════════════════════╣${R}"
 
   local idx=1
