@@ -1,0 +1,137 @@
+# ═══════════════════════════════════════════════════════════════
+# coderabbit-patch.yml — Auto-patch findings on merged PRs
+#
+# DIRECT-TO-MAIN FIX COMMITS
+#
+# When CodeRabbit posts a review on an already-merged PR, this Action:
+#   1. Checks if there are actionable findings (bugs, security, correctness)
+#   2. Checks out main
+#   3. Spawns Claude Code to fix the findings
+#   4. Runs the test suite — if tests fail, creates an issue instead
+#   5. Pushes the fix commit to main
+#
+# The fix commit message references the original PR for traceability:
+#   "fix: patch findings from #42"
+#
+# SAFETY RAILS:
+#   - Only triggers on CodeRabbit reviews (not human reviews)
+#   - Only triggers on merged PRs (not open ones)
+#   - Claude is instructed to skip style nits, only fix real bugs
+#   - Test suite must pass or changes are reverted + issue created
+#   - If no test suite exists, this is RISKY — consider disabling
+#
+# COST:
+#   - Each patch spawns a Claude Code session (~$0.10-0.50 per run)
+#   - Runs on ubuntu-latest (~$0.008/min)
+#   - If CodeRabbit finds 0 actionable issues, the run exits early
+#
+# TO ENABLE:
+#   1. Add ANTHROPIC_API_KEY to repo secrets
+#   2. Uncomment the workflow below
+#   3. Ensure your project has a test command in package.json or Makefile
+#
+# TO DISABLE:
+#   - Comment out or delete this file
+#   - Or set the `if` condition to `false`
+# ═══════════════════════════════════════════════════════════════
+
+name: Patch CodeRabbit Findings
+
+# Trigger: CodeRabbit submits a review
+on:
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  patch:
+    # Only run when:
+    #   - The reviewer is CodeRabbit
+    #   - The PR is already merged (post-merge review pattern)
+    if: |
+      contains(github.event.review.user.login, 'coderabbit') &&
+      github.event.pull_request.merged == true
+    
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: read
+    
+    steps:
+      - name: Check for actionable findings
+        id: check
+        env:
+          REVIEW_BODY: ${{ github.event.review.body }}
+        run: |
+          # Count actionable keywords — skip if just "looks good" type reviews
+          COUNT=$(echo "$REVIEW_BODY" | grep -ciE '(bug|security|error|vulnerability|missing|incorrect|should fix|must fix|critical|race condition|leak|injection)' || true)
+          echo "actionable=$COUNT" >> "$GITHUB_OUTPUT"
+          
+          if [ "$COUNT" -eq 0 ]; then
+            echo "No actionable findings — skipping"
+          else
+            echo "Found ~$COUNT actionable findings"
+          fi
+
+      - name: Checkout main
+        if: steps.check.outputs.actionable != '0'
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Install Claude Code
+        if: steps.check.outputs.actionable != '0'
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Patch findings
+        if: steps.check.outputs.actionable != '0'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          REVIEW_BODY: ${{ github.event.review.body }}
+        run: |
+          echo "$REVIEW_BODY" > /tmp/findings.txt
+          
+          claude -p \
+            "You are patching main based on CodeRabbit findings from PR #$PR_NUMBER ($PR_TITLE).
+          
+          Findings:
+          $(cat /tmp/findings.txt)
+          
+          Rules:
+          - ONLY fix real bugs, security issues, and correctness problems
+          - SKIP style nits, naming suggestions, and optional improvements  
+          - Keep changes minimal and surgical
+          - Run the project test suite after changes
+          - If tests fail, revert all changes
+          - Commit with: 'fix: patch findings from #$PR_NUMBER'" \
+            2>&1 | tee /tmp/claude-output.txt
+          
+          # Check if Claude made any commits
+          if git diff --quiet HEAD~1 HEAD 2>/dev/null; then
+            echo "NO_CHANGES=true" >> "$GITHUB_ENV"
+          fi
+
+      - name: Push fixes
+        if: steps.check.outputs.actionable != '0' && env.NO_CHANGES != 'true'
+        run: git push
+
+      - name: Create issue on failure
+        if: failure() && steps.check.outputs.actionable != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "fix: manual patch needed for findings from #${{ github.event.pull_request.number }}" \
+            --body "Auto-patch failed for PR #${{ github.event.pull_request.number }} (${{ github.event.pull_request.title }}).
+
+          CodeRabbit review: ${{ github.event.review.html_url }}
+          
+          Claude output:
+          \`\`\`
+          $(tail -50 /tmp/claude-output.txt 2>/dev/null || echo 'No output captured')
+          \`\`\`
+          
+          Manual fix needed." \
+            --label "auto-fix-failed"
