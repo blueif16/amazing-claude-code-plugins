@@ -1,6 +1,25 @@
 #!/bin/bash
-# Push branch and create PR via Claude /ship command.
-# Replaces merge.sh — PRs go to GitHub for review, no local merging.
+# open_pr.sh — Push, create PR (for audit trail + CR), local merge, push main.
+#
+# Flow:
+#   1. Push branch to origin
+#   2. Create PR via gh pr create (triggers CodeRabbit, leaves audit trail)
+#   3. Local squash-merge to main (instant, no GitHub round-trip)
+#   4. Push main to origin
+#   5. GitHub auto-closes the PR (detects changes landed in main)
+#   6. CodeRabbit reviews the closed PR asynchronously
+#   7. patch-findings.sh picks up findings later
+#
+# Why not gh pr merge?
+#   gh pr merge asks GitHub's server to merge, then you git pull to get it.
+#   That's a network round-trip for no reason. Local merge is instant.
+#   The PR only exists to trigger CodeRabbit and leave an audit trail.
+#
+# Why not skip the PR entirely?
+#   CodeRabbit only reviews PRs, not direct pushes. No PR = no review.
+#
+# Note: PRs closed this way show as "closed" not "merged" on GitHub.
+#   The diff and conversation are still there. patch-findings.sh handles this.
 #
 # Usage: open_pr.sh [WORKTREE_DIR]
 
@@ -9,14 +28,12 @@ set -euo pipefail
 LOG="/tmp/cc-post-session.log"
 log() { echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG"; }
 
-# Notification helper
 notify() {
     local title="$1"
     local message="$2"
     osascript -e "display notification \"$message\" with title \"$title\" sound name \"Glass\"" 2>/dev/null || true
 }
 
-# Status file for monitoring
 STATUS_FILE="/tmp/.cc-pr-status"
 update_status() {
     local branch="$1"
@@ -43,7 +60,6 @@ if [ "$BRANCH" = "$MAIN_BRANCH" ]; then
     exit 0
 fi
 
-# Nothing to ship?
 COMMITS=$(git log "$MAIN_BRANCH".."$BRANCH" --oneline 2>/dev/null | wc -l | tr -d ' ')
 log "Commits ahead of $MAIN_BRANCH: $COMMITS"
 
@@ -52,84 +68,78 @@ if [ "$COMMITS" -eq 0 ]; then
     exit 0
 fi
 
-# PR already exists?
-if PR_URL=$(gh pr view "$BRANCH" --json url -q '.url' 2>/dev/null); then
-    log "ℹ️  PR already exists: $PR_URL"
+if gh pr view "$BRANCH" --json url -q '.url' &>/dev/null; then
+    log "ℹ️  PR already exists for $BRANCH"
     exit 0
 fi
 
-# ── Push ───────────────────────────────────────────────────────
+# ── Push branch ────────────────────────────────────────────────
 log "📤 Pushing $BRANCH..."
 update_status "$BRANCH" "pushing"
-notify "CloudMate" "Pushing branch..."
+notify "CloudMate" "Pushing $BRANCH..."
 git push -u origin "$BRANCH" 2>&1 | tee -a "$LOG"
 
-# ── CodeRabbit pre-PR review + autofix ─────────────────────────
-MAX_CR_ROUNDS=2
-CR_ROUND=0
-
-if command -v coderabbit &>/dev/null; then
-    while [ $CR_ROUND -lt $MAX_CR_ROUNDS ]; do
-        CR_ROUND=$((CR_ROUND + 1))
-        log "🐇 CodeRabbit review round $CR_ROUND/$MAX_CR_ROUNDS..."
-        update_status "$BRANCH" "coderabbit_review_round_${CR_ROUND}"
-        notify "CloudMate" "CodeRabbit reviewing (round $CR_ROUND/$MAX_CR_ROUNDS)..."
-
-        CR_OUTPUT=$(coderabbit review --base "$MAIN_BRANCH" --prompt-only 2>&1)
-        CR_EXIT=$?
-
-        if [ $CR_EXIT -ne 0 ]; then
-            log "⚠️  CodeRabbit failed (exit $CR_EXIT), skipping"
-            break
-        fi
-
-        # Check if CR found actionable issues (non-empty, not just whitespace/headers)
-        ISSUE_COUNT=$(echo "$CR_OUTPUT" | grep -cE '(bug|error|vulnerability|missing|incorrect|should|must|critical|warning)' || true)
-
-        if [ "$ISSUE_COUNT" -eq 0 ]; then
-            log "✅ CodeRabbit clean — no actionable issues"
-            break
-        fi
-
-        log "🔧 CodeRabbit found ~$ISSUE_COUNT issues, spawning CC to fix..."
-        update_status "$BRANCH" "claude_fixing_issues_round_${CR_ROUND}"
-        notify "CloudMate" "Claude fixing $ISSUE_COUNT issues..."
-
-        # Write CR output to temp file for CC to read
-        CR_FILE="/tmp/.cc-cr-review-${BRANCH}"
-        echo "$CR_OUTPUT" > "$CR_FILE"
-
-        # Spawn CC to fix issues (non-interactive, bounded)
-        cd "$WORKTREE_DIR" && unset CLAUDECODE && claude -p \
-            "Read the CodeRabbit review at $CR_FILE and fix the actionable issues. Only fix real bugs, security issues, and correctness problems — skip style nits. Commit with message: 'fix: address CodeRabbit review (round $CR_ROUND)'" \
-            2>&1 | tee -a "$LOG"
-
-        # Push fixes
-        git push 2>&1 | tee -a "$LOG"
-        log "📤 Pushed fixes from round $CR_ROUND"
-
-        rm -f "$CR_FILE"
-    done
-else
-    log "ℹ️  CodeRabbit CLI not installed, skipping pre-PR review"
-fi
-
-# ── Create PR via /ship ───────────────────────────────────────
-log "📝 Creating PR via /ship..."
+# ── Create PR (audit trail + CodeRabbit trigger) ──────────────
+# gh pr create --fill auto-generates title from branch name and body from commits.
+# This is faster than spawning Claude with /ship (~1 sec vs ~15 sec).
+# The PR description doesn't need to be perfect — it's an audit record, not a proposal.
+log "📝 Creating PR..."
 update_status "$BRANCH" "creating_pr"
-notify "CloudMate" "Creating PR with /ship..."
-cd "$WORKTREE_DIR" && unset CLAUDECODE && claude -p "/ship" 2>&1 | tee -a "$LOG"
 
-# Get PR URL
-if PR_URL=$(gh pr view "$BRANCH" --json url -q '.url' 2>/dev/null); then
-    log "✅ PR created: $PR_URL"
-    update_status "$BRANCH" "done"
-    notify "CloudMate ✅" "PR created: $PR_URL"
-else
-    log "⚠️  PR creation completed but URL not found"
-    update_status "$BRANCH" "error"
-    notify "CloudMate ⚠️" "PR creation completed but URL not found"
+# Build squash message from commits (same logic as merge.sh)
+PR_BODY=$(git log "$MAIN_BRANCH".."$BRANCH" --pretty=format:"- %s" 2>/dev/null \
+    | grep -v "^- wip" | grep -v "^- checkpoint" | grep -v "^- pre-merge" \
+    | grep -v "^- session-end" | head -20)
+
+PR_URL=$(gh pr create \
+    --fill \
+    --body "${PR_BODY:-Auto-created by CloudMate}" \
+    2>&1 | tail -1) || true
+
+if [ -z "$PR_URL" ] || ! echo "$PR_URL" | grep -q "github.com"; then
+    # Fallback: try to get URL if create succeeded but output was noisy
+    PR_URL=$(gh pr view "$BRANCH" --json url -q '.url' 2>/dev/null || echo "")
 fi
+
+log "PR: ${PR_URL:-failed}"
+
+# ── Local squash-merge to main ────────────────────────────────
+# This is instant. No GitHub round-trip. merge.sh handles:
+#   - cd to worktree, commit any stragglers
+#   - build squash message from branch commits
+#   - cd to main dir, git merge --squash, commit
+log "🔀 Local squash-merge..."
+update_status "$BRANCH" "merging"
+
+cd "$MAIN_DIR"
+git merge --squash "$BRANCH" 2>&1 | tee -a "$LOG"
+
+# Build commit message
+MSG=$(git log "$MAIN_BRANCH".."$BRANCH" --pretty=format:"%s" 2>/dev/null \
+    | grep -v "^wip" | grep -v "^checkpoint" | grep -v "^pre-merge" \
+    | grep -v "^session-end" | head -5 | tr '\n' '; ' | sed 's/; $//')
+MSG="${MSG:-merge from $BRANCH}"
+
+if git commit -m "merge: $MSG" 2>/dev/null; then
+    log "✅ Squash-merged: $MSG"
+else
+    log "ℹ️  Nothing new to merge (already up to date)"
+fi
+
+# ── Push main ─────────────────────────────────────────────────
+# This triggers GitHub to auto-close the PR (it detects the changes landed).
+log "📤 Pushing $MAIN_BRANCH..."
+git push 2>&1 | tee -a "$LOG"
+
+update_status "$BRANCH" "done"
+notify "CloudMate ✅" "Merged to $MAIN_BRANCH — CR reviewing async"
+log "✅ Done. CR will review the closed PR."
+
+# ── Clean up remote branch ────────────────────────────────────
+# The local branch + worktree get cleaned up by discard.sh or manually.
+# Remote branch can go now — the PR preserves the diff.
+git push origin --delete "$BRANCH" 2>/dev/null || true
+log "🗑️  Deleted remote branch $BRANCH"
 
 # ── Update registry if it exists ──────────────────────────────
 REGISTRY="$MAIN_DIR/.tasks/registry.json"
@@ -138,7 +148,7 @@ if [ -f "$REGISTRY" ] && command -v jq &>/dev/null; then
     TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
     jq --arg wt "$WT_NAME" \
-       --arg status "shipped" \
+       --arg status "merged" \
        --arg pr "${PR_URL:-}" \
        --arg ts "$TIMESTAMP" \
        '.worktrees[$wt].status = $status |

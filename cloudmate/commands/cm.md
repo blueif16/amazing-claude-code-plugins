@@ -24,7 +24,7 @@ Parse what follows `/cm`:
 2. Classify intent (Step 1)
 3. If codebase context needed: spawn an `Explore` subagent with instructions to write detailed findings to `.tasks/explore-findings.md` (file paths, interfaces, patterns, gotchas) AND return a compact summary. Do NOT read files yourself.
 4. Assess complexity (Step 2)
-5. **Level 1:** Just do the work. No DAG needed.
+5. **Level 1:** Just do the work. No DAG needed. Read `references/data-first-dev.md` for implementation methodology.
 6. **Level 2+:** Read `references/operational-efficiency.md`. Generate DAG (Step 3). In each spawn prompt, reference `.tasks/explore-findings.md` for codebase context instead of pasting its contents. Display plan with ASCII tree. Ask `Go? (y / adjust / n)`
    - `y` / `go` / `ok` → Execute (Step 4). Write plan to `$MAIN_DIR/.tasks/$BRANCH.md` (see SKILL.md Step 5 for format).
    - `n` / `cancel` → Abort.
@@ -81,6 +81,7 @@ When spawning subagents (L2) or generating teammate prompts (L3), always include
 8. **API verification:** "Before writing code that uses any library/framework beyond basic builtins, use Context7 (resolve-library-id → get-library-docs) to verify current patterns. Write a brief cheatsheet to the path specified in your task. Do not guess — if you are not absolutely certain, look it up."
 9. **Context hygiene:** "Write code directly to files. Do not draft code in your response then also write it to a file. Use cp/mv for file operations, not read-then-write."
 10. **Findings handoff:** "Write detailed discoveries (file paths, interface shapes, patterns, gotchas) to the findings file specified in your task. Return only a compact summary to the orchestrator."
+11. **Data-first methodology:** "Read `references/data-first-dev.md`. Verify API response shapes before writing rendering code. Use `[DATA-FLOW]` type-shape logs (not full payload dumps). Run `agent-browser errors` after each change. Use Context7 before using any library API."
 
 ## Merge Guidance
 

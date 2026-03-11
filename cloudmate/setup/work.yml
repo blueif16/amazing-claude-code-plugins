@@ -19,6 +19,7 @@ windows:
       panes:
         - nvim .                                # left: code viewer
         - claude -w                             # right top: CC slot 1 (run /cm here)
-        - >-                                    # right bottom: dev server | status
+        - >-                                    # right bottom: dev server | status | patch daemon
           tmux split-window -h '~/.cc/status.sh --watch';
+          tmux split-window -v '~/.cc/patch-findings.sh --watch';
           npm run dev

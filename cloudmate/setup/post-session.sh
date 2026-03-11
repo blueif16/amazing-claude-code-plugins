@@ -2,6 +2,10 @@
 # Post-session wrapper — runs after claude -w exits (via shell semicolon chain).
 # Reads action from temp file (set by iTerm shortcut), defaults to "pr".
 #
+# Flow:
+#   Cmd+Shift+P → action=pr → open_pr.sh (push → PR → merge → sync main)
+#   Cmd+Shift+D → action=discard → discard.sh (remove worktree + branch)
+#
 # Usage: post-session.sh $TMUX_PANE
 #   Called automatically — do not run manually.
 
@@ -20,7 +24,6 @@ if [ -f "$DIR_FILE" ]; then
     WORKTREE_DIR=$(cat "$DIR_FILE")
     rm -f "$DIR_FILE"
 else
-    # Fallback to pwd
     WORKTREE_DIR=$(pwd)
 fi
 
@@ -32,7 +35,7 @@ if [ -f "$ACTION_FILE" ]; then
 fi
 log "ACTION=$ACTION"
 
-# ── Change to worktree directory FIRST ──────────────────────────
+# ── Change to worktree directory ──────────────────────────────
 cd "$WORKTREE_DIR" || {
     log "ERROR: Cannot cd to $WORKTREE_DIR"
     exit 1
@@ -40,40 +43,31 @@ cd "$WORKTREE_DIR" || {
 
 log "WORKTREE_DIR=$WORKTREE_DIR"
 log "BRANCH=$(git branch --show-current 2>/dev/null)"
-log "ACTION_FILE=$ACTION_FILE exists=$([ -f "$ACTION_FILE" ] && echo yes || echo no)"
 
-# ── Safety commit (always, regardless of action) ──────────────
+# ── Safety commit (always) ────────────────────────────────────
 git add -A 2>/dev/null
 if ! git diff-index --quiet HEAD 2>/dev/null; then
     log "Uncommitted changes found, doing safety commit"
     git commit -m "session-end checkpoint" 2>/dev/null || true
 else
-    log "Working tree clean, no safety commit needed"
+    log "Working tree clean"
 fi
-
-MAIN_BRANCH=$(git worktree list | head -1 | awk '{print $1}' | xargs -I{} git -C {} branch --show-current 2>/dev/null || echo "main")
-AHEAD=$(git log "$MAIN_BRANCH"..HEAD --oneline 2>/dev/null | wc -l | tr -d ' ')
-log "Commits ahead of $MAIN_BRANCH: $AHEAD"
 
 # ── Dispatch ──────────────────────────────────────────────────
 log "Dispatching action=$ACTION"
 case "$ACTION" in
     pr)
+        # Run in detached tmux session so the pane can close immediately.
+        # open_pr.sh: push → create PR → squash-merge → sync local main.
+        # CodeRabbit reviews the merged PR async. Findings patched later.
         SESSION_NAME="pr-$(date +%s)"
-        log "Starting PR creation in background session: $SESSION_NAME"
-        log "Watch progress: tail -f $LOG"
+        log "Starting PR+merge in background: $SESSION_NAME"
 
-        # Run in detached tmux session (non-blocking)
         tmux new-session -d -s "$SESSION_NAME" \
             "cd '$WORKTREE_DIR' && ~/.cc/open_pr.sh '$WORKTREE_DIR' 2>&1 | tee -a '$LOG'"
 
-        log "PR creation started in background"
-        log "To attach: tmux attach -t $SESSION_NAME"
-
-        # Foreground mode (blocking) - uncomment to revert:
-        # log "Calling open_pr.sh"
-        # ~/.cc/open_pr.sh "$WORKTREE_DIR" 2>&1 | tee -a "$LOG"
-        # log "open_pr.sh exit code=${PIPESTATUS[0]}"
+        log "Background session started. Attach: tmux attach -t $SESSION_NAME"
+        log "Watch progress: tail -f $LOG"
         ;;
     discard)
         log "Calling discard.sh"
@@ -84,3 +78,19 @@ case "$ACTION" in
         ;;
 esac
 log "=== post-session finished ==="
+
+
+# ═══════════════════════════════════════════════════════════════
+# OLD post-session.sh (commented out for reference)
+# Only difference: the pr case previously ran open_pr.sh in foreground
+# (blocking) mode. Now it's always background + immediate merge.
+# ═══════════════════════════════════════════════════════════════
+#
+# case "$ACTION" in
+#     pr)
+#         SESSION_NAME="pr-$(date +%s)"
+#         tmux new-session -d -s "$SESSION_NAME" \
+#             "cd '$WORKTREE_DIR' && ~/.cc/open_pr.sh '$WORKTREE_DIR' 2>&1 | tee -a '$LOG'"
+#         ;;
+#     ...
+# esac
