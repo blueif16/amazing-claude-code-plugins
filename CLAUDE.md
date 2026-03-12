@@ -45,3 +45,20 @@
 - 确保 JSON 格式正确，最后一个条目后不加逗号
 - tags 中建议包含"中文"标签（如果插件支持中文）
 - 保持与现有插件条目的格式一致
+
+## Linking to ~/.claude
+
+CloudMate skills and commands are symlinked directly into `~/.claude/` so they're available globally without marketplace registration.
+
+```bash
+# Skills
+ln -sfn ~/favprojects/amazing-claude-code-plugins/cloudmate/skills/cm ~/.claude/skills/cm
+
+# Commands (only slice — /cm is handled by the skill)
+ln -sfn ~/favprojects/amazing-claude-code-plugins/cloudmate/commands/slice.md ~/.claude/commands/slice.md
+
+# Codex CLI (same SKILL.md format, symlink supported)
+ln -sfn ~/favprojects/amazing-claude-code-plugins/cloudmate/skills/cm ~/.codex/skills/cm
+```
+
+After linking, `/cm` and `/slice` are available in any project (Claude Code + Codex CLI).

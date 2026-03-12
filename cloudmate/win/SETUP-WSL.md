@@ -1,21 +1,40 @@
-# CloudMate on WSL + WezTerm
+# CloudMate v2 on WSL + WezTerm
 
-Migrate the full CloudMate worktree workflow from macOS/iTerm2 to Windows/WSL/WezTerm.
+Native pane detection — click an agent pane to target it with Ship/Discard.
 
-## What Changes from macOS
+## Architecture (v2 vs v1)
 
-| Component | macOS | WSL/Windows |
-|-----------|-------|-------------|
-| Terminal | iTerm2 | WezTerm |
-| tmux integration | `-CC` control mode | Native WSL domain (no `-CC`) |
-| Keyboard shortcuts | iTerm2 Key Bindings → "Send tmux command" | WezTerm `config.keys` → `SendString` / `action_callback` |
-| Notifications | `osascript` (native macOS) | `powershell.exe` toast via BurntToast (or `notify-send`) |
-| Lazygit popup | iTerm2 Hotkey Window (dedicated profile) | WezTerm `SpawnCommandInNewTab` keybinding |
-| Package manager | `brew install` | `apt install` + manual for lazygit |
-| Homebrew paths | `/opt/homebrew/bin/` | System PATH (`/usr/bin/`, `/usr/local/bin/`) |
-| Clipboard in tmux | `pbcopy` / `pbpaste` | `clip.exe` / `powershell.exe Get-Clipboard` (WSL interop) |
+```
+v1 (broken pane detection):          v2 (native pane detection):
+┌── WezTerm pane 0 ──────────────┐   ┌── WezTerm 0 ──┬── WezTerm 1 ──┐
+│ ┌─ tmux 0 ──┬── tmux 1 ──────┐│   │               │  agent (tmux  │
+│ │            │               ││   │  nvim/shell   │  inside for   │
+│ │  nvim      │  claude       ││   │               │  Agent Teams) │
+│ │            ├── tmux 2 ──────┤│   │               ├── WezTerm 2 ──┤
+│ │            │  status.sh    ││   │               │  status.sh   │
+│ └────────────┴───────────────┘│   └───────────────┴──────────────┘
+│     WezTerm sees: 1 pane      │        WezTerm sees: 3 panes ✓
+└────────────────────────────────┘
+```
 
-Everything else — the scripts, skill, commands, worktree workflow, Agent Teams, CodeRabbit pipeline — works identically.
+**v1 problem:** tmux owns layout → WezTerm sees one pane → `Ctrl+Shift+P` can't tell which agent you're looking at.
+
+**v2 fix:** WezTerm owns layout → each split is a native pane → click = focus → keybindings target the right agent. tmux only runs inside agent panes for Agent Teams compatibility.
+
+## What Changes from v1
+
+| Behavior | v1 | v2 |
+|----------|----|----|
+| Layout manager | tmux | WezTerm native panes |
+| Pane navigation | `Ctrl+B` + arrow | Click, `Alt+h/j/k/l`, or `Alt+Arrow` |
+| Zoom a pane | `Ctrl+B z` | `Ctrl+Shift+Z` |
+| Ship PR targeting | Must Ctrl+B to tmux pane first | Click agent pane, then `Ctrl+Shift+P` |
+| Visual pane picker | N/A | `Ctrl+Shift+E` |
+| Session persistence | tmux keeps everything | nvim/status don't survive disconnect; agents do (tmux inside) |
+
+## What Stays the Same
+
+Everything else — scripts, skill, commands, Agent Teams, CodeRabbit pipeline, lazygit popup — is identical.
 
 ## Quick Install
 
@@ -24,18 +43,19 @@ cd ~/favprojects/amazing-claude-code-plugins/cloudmate
 bash win/install.sh
 ```
 
-This handles deps, script installation (with cross-platform notification patching), skill/command copying, and settings.json. Follow the manual steps it prints at the end.
+Then copy `~/.wezterm.lua` from `C:\Users\ran\Downloads\.wezterm.lua` to your WezTerm config location (usually `C:\Users\ran\.wezterm.lua`).
 
 ## Manual Setup (step by step)
 
 ### 1. System Dependencies
 
+Same as before:
+
 ```bash
 sudo apt update
 sudo apt install -y tmux jq
 
-# GitHub CLI
-# https://github.com/cli/cli/blob/trunk/docs/install_linux.md
+# gh CLI
 (type -p wget >/dev/null || sudo apt install wget -y) \
   && sudo mkdir -p -m 755 /etc/apt/keyrings \
   && out=$(mktemp) && wget -qO "$out" https://cli.github.com/packages/githubcli-archive-keyring.gpg \
@@ -47,7 +67,7 @@ sudo apt install -y tmux jq
 
 gh auth login
 
-# lazygit (binary release — apt doesn't have it)
+# lazygit
 LAZYGIT_VERSION=$(curl -s "https://api.github.com/repos/jesseduffield/lazygit/releases/latest" | jq -r '.tag_name' | sed 's/^v//')
 curl -Lo /tmp/lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/latest/download/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
 tar xf /tmp/lazygit.tar.gz -C /tmp lazygit
@@ -56,163 +76,134 @@ sudo install /tmp/lazygit /usr/local/bin/lazygit
 
 ### 2. Scripts to ~/.cc/
 
-```bash
-mkdir -p ~/.cc
-
-# Cross-platform notify helper (replaces osascript)
-cp win/notify.sh ~/.cc/notify.sh && chmod +x ~/.cc/notify.sh
-
-# Core scripts (these are platform-agnostic)
-for f in send-exit.sh post-session.sh discard.sh merge.sh status.sh fix-cr.sh; do
-  cp setup/$f ~/.cc/$f && chmod +x ~/.cc/$f
-done
-
-# Scripts that need notification patching (have osascript)
-for f in open_pr.sh patch-findings.sh; do
-  cp setup/$f ~/.cc/$f
-  # Replace osascript notify() with cross-platform version
-  sed -i '/^notify() {/,/^}/c\source ~/.cc/notify.sh' ~/.cc/$f
-  chmod +x ~/.cc/$f
-done
-
-# Lazygit popup (WSL version — no /opt/homebrew paths)
-cp win/lazygit-popup.sh ~/.cc/lazygit-popup.sh && chmod +x ~/.cc/lazygit-popup.sh
-```
+Same as v1 — `install.sh` handles this.
 
 ### 3. Skill + Commands
 
-```bash
-# User-level (available across all projects)
-mkdir -p ~/.claude/skills/cloudmate/references
-cp skills/cloudmate/SKILL.md ~/.claude/skills/cloudmate/SKILL.md
-cp skills/cloudmate/references/*.md ~/.claude/skills/cloudmate/references/
-
-mkdir -p ~/.claude/commands
-cp commands/*.md ~/.claude/commands/
-```
+Same as v1 — `install.sh` handles this.
 
 ### 4. Claude Settings
 
-Add to `~/.claude/settings.json`:
+Same as v1:
 
 ```json
 {
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "CLAUDE_CODE_TEAMMATE_MODE": "tmux"
-  },
-  "permissions": {
-    "allow": [
-      "Bash(npm:*)", "Bash(npx:*)", "Bash(node:*)",
-      "Bash(git add:*)", "Bash(git commit:*)", "Bash(git status:*)",
-      "Bash(git diff:*)", "Bash(git log:*)", "Bash(git branch:*)",
-      "Bash(grep:*)", "Bash(ls:*)", "Bash(cat:*)", "Bash(mkdir:*)",
-      "Edit(*)", "Write(*)", "Read(*)"
-    ],
-    "deny": [
-      "Bash(git push --force:*)",
-      "Bash(git reset --hard:*)"
-    ]
   }
 }
 ```
 
-### 5. WezTerm Keybindings
+### 5. WezTerm Config (THE BIG CHANGE)
 
-Your `.wezterm.lua` already has the core CloudMate bindings (`Ctrl+Shift+W/P/D/S`). Add the lazygit popup:
+Copy the new `.wezterm.lua` to your Windows home:
 
-```lua
--- In config.keys table:
-{
-    key = "g",
-    mods = "CTRL|SHIFT",
-    action = wezterm.action.SpawnCommandInNewTab({
-        args = { "zsh", "-c", "$HOME/.cc/lazygit-popup.sh" },
-    }),
-},
+```powershell
+# In PowerShell
+Copy-Item "$env:USERPROFILE\Downloads\.wezterm.lua" "$env:USERPROFILE\.wezterm.lua"
 ```
 
-See `win/wezterm-cloudmate.lua` for the full keybinding reference.
+Key additions in v2:
+- `pane_focus_follows_mouse = true` — hover to focus
+- `inactive_pane_hsb` — dims unfocused panes so you see where focus is
+- Native pane navigation: `Alt+h/j/k/l` and `Alt+Arrow`
+- `Ctrl+Shift+Z` to zoom/unzoom (replaces tmux prefix+z)
+- `Ctrl+Shift+E` for visual pane picker
+- Agent panes tagged with `cloudmate_role=agent` user var
+- Ship/Discard check the user var before executing
 
-### 6. twork Shell Function
+### 6. twork Shell Function (UPDATED)
 
-Add to `~/.zshrc`:
+Replace the old twork in `~/.zshrc`:
 
 ```bash
+# Remove old twork first, then add new one
+# (or just re-source after install.sh)
+echo "" >> ~/.zshrc
 cat win/twork.zsh >> ~/.zshrc
 source ~/.zshrc
 ```
 
-### 7. tmux Clipboard (for vi copy-mode)
+v2 `twork` uses `wezterm cli split-pane` to create native splits. Falls back to the old tmux layout if you're not in WezTerm (SSH, etc).
 
-Add to `~/.tmux.conf`:
+### 7. tmux Clipboard
+
+Still needed for agent panes (tmux runs inside them):
 
 ```bash
-# WSL clipboard integration
+# ~/.tmux.conf
 bind -T copy-mode-vi y send -X copy-pipe-and-cancel "clip.exe"
 bind -T copy-mode-vi Enter send -X copy-pipe-and-cancel "clip.exe"
-
-# Paste from Windows clipboard
 bind ] run "powershell.exe -command 'Get-Clipboard' | tmux load-buffer - && tmux paste-buffer"
 ```
 
-### 8. (Optional) Windows Toast Notifications
-
-For rich notifications that appear in Windows Action Center:
+### 8. (Optional) BurntToast
 
 ```powershell
-# In PowerShell (Admin)
 Install-Module -Name BurntToast -Force
 ```
 
-Without BurntToast, the notify helper falls back to a basic system tray balloon. Both work, BurntToast just looks nicer and supports action buttons.
+## Keybinding Reference (v2)
 
-## Keybinding Reference
+### CloudMate Workflow
 
 | Shortcut | Action | Notes |
 |----------|--------|-------|
-| `Ctrl+Shift+W` | New worktree pane (`claude -w` + post-session chain) | Spawns in tmux split |
-| `Ctrl+Shift+P` | Ship PR (push → create PR → merge → push main) | Focus the target pane first |
-| `Ctrl+Shift+D` | Discard worktree + close pane | Focus the target pane first |
-| `Ctrl+Shift+S` | Status dashboard (`status.sh --watch`) | Opens in small bottom split |
-| `Ctrl+Shift+G` | Lazygit popup (auto-detects active worktree) | Opens in new WezTerm tab |
+| `Ctrl+Shift+W` | New agent in native right split | Tags pane with user var |
+| `Ctrl+Shift+P` | Ship PR | Click agent pane first |
+| `Ctrl+Shift+D` | Discard worktree | Click agent pane first |
+| `Ctrl+Shift+S` | Status dashboard | Native bottom split |
+| `Ctrl+Shift+G` | Lazygit popup | New WezTerm tab |
 
-## Key Difference: No -CC Mode
+### Pane Navigation (new in v2)
 
-On macOS, iTerm2's `-CC` tmux integration mode lets iTerm2 render tmux panes as native tabs/splits. WezTerm on Windows doesn't support this — it uses its own "WSL domain" to connect to WSL directly.
+| Shortcut | Action |
+|----------|--------|
+| `Alt+h/j/k/l` | Move focus (vim-style) |
+| `Alt+Arrow` | Move focus (arrow keys) |
+| `Alt+Shift+Arrow` | Resize pane |
+| `Ctrl+Shift+Z` | Zoom/unzoom pane |
+| `Ctrl+Shift+E` | Visual pane picker |
+| Mouse hover | Focus follows mouse |
 
-This means:
-- **tmux runs inside WezTerm**, not alongside it
-- **tmux panes are tmux panes** (not WezTerm splits) — you navigate with `Ctrl+B` prefix
-- The CloudMate keybindings work by **sending shell commands** into the active tmux session via `SendString`
-- `twork` creates a tmux session directly (no tmuxinator needed)
+### General
 
-In practice this barely matters. The workflow is identical: `twork` → `Ctrl+Shift+W` → `/cm` → `Ctrl+Shift+P`.
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+Shift+T` | New tab |
+| `Ctrl+Shift+1-4` | Jump to tab |
+| `Ctrl+Shift+F` | Search scrollback |
+| `Ctrl+Shift+X` | Vi copy mode |
+| `Ctrl+Shift+Space` | Quick select (URLs, paths) |
 
 ## Troubleshooting
 
-**"tmux: command not found" after Ctrl+Shift+W**
-You're not inside a tmux session. Run `twork` first, or start tmux manually.
+**"wezterm CLI not found" in twork**
+The `wezterm` CLI binary must be in PATH inside WSL. WezTerm usually sets this up, but if not:
+```bash
+echo 'export PATH="$PATH:/mnt/c/Program Files/WezTerm"' >> ~/.zshrc
+```
 
-**Notifications not showing**
-Install BurntToast (`Install-Module -Name BurntToast -Force` in PowerShell). Without it, notifications fall back to tray balloons which some Windows configs suppress.
+**Agent pane doesn't get tagged (Ship/Discard shows toast)**
+The `SetUserVar` escape sequence requires WezTerm 20230408+. Check `wezterm --version`.
 
-**lazygit opens in wrong directory**
-Happens if no tmux session is running. lazygit-popup.sh reads `pane_activity` from tmux — no tmux means it falls back to `$HOME`.
+**Status pane opens in wrong place**
+`Ctrl+Shift+S` splits the currently focused pane. Focus the right-side agent pane first if you want status below it.
 
-**Clipboard not working in tmux vi-mode**
-Make sure `clip.exe` is accessible from WSL: `which clip.exe` should return `/mnt/c/Windows/system32/clip.exe`. If not, add `/mnt/c/Windows/system32` to your PATH.
+**"focus follows mouse" is annoying**
+Set `config.pane_focus_follows_mouse = false` in `.wezterm.lua` and use click or `Alt+h/j/k/l` instead.
 
-**Agent Teams panes don't appear**
-Verify `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` and `CLAUDE_CODE_TEAMMATE_MODE=tmux` in `~/.claude/settings.json`. Also confirm Claude Code v2.1.19+.
+**Session persistence**
+nvim and status panes don't survive a WezTerm restart (they're not inside tmux). Agent panes DO survive because they use tmux internally. For full persistence, use `twork` to recreate the layout — the tmux agent sessions will still be running, just `tmux attach -t cc-*`.
 
 ## Files in This Directory
 
 | File | Purpose |
 |------|---------|
-| `SETUP-WSL.md` | This guide |
+| `SETUP-WSL.md` | This guide (v2) |
 | `install.sh` | One-shot automated installer |
-| `notify.sh` | Cross-platform notification helper (replaces `osascript`) |
-| `twork.zsh` | `twork` shell function for `~/.zshrc` |
-| `lazygit-popup.sh` | Lazygit worktree popup (Linux paths, no Homebrew) |
-| `wezterm-cloudmate.lua` | WezTerm keybinding reference snippet |
+| `notify.sh` | Cross-platform notification helper |
+| `twork.zsh` | `twork` v2 shell function (native panes + tmux fallback) |
+| `lazygit-popup.sh` | Lazygit worktree popup |
+| `wezterm-cloudmate.lua` | WezTerm keybinding reference snippet (v2) |

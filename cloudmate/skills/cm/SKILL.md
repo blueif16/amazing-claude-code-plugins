@@ -1,7 +1,7 @@
 ---
-name: cloudmate
-description: "Plan and orchestrate work from a single sentence. Classifies intent, assesses complexity, generates task DAGs with acceptance criteria, and drives execution via subagents (L2) or Agent Teams (L3). Activates on /cm or when the user describes a non-trivial task."
-allowed-tools: ["Bash", "Read", "Write", "Task", "Teammate"]
+name: cm
+description: "Start, check, or continue any work. Analyzes intent, plans tasks, and orchestrates execution via subagents (L2) or Agent Teams (L3)."
+disable-model-invocation: true
 ---
 
 # CloudMate — From Intent to Coordinated Execution
@@ -91,11 +91,16 @@ Go? (y / adjust / n)
 Just do the work. Run the acceptance check when done. Update `.tasks/plan.md` if one was created.
 
 ### Level 2 — Subagents
-For each unblocked task, spawn via Task tool. Each subagent gets:
+For each unblocked task, spawn via Task tool. Every spawn prompt MUST include:
 - Role + task title + scope + acceptance criteria
 - Upstream context (summaries from completed tasks)
 - Logging prefix: `[wt-BRANCH_NAME]` (get from `git branch --show-current`)
-- Instruction to commit with conventional message when done
+- Commit convention: `feat:`, `fix:`, `refactor:`, `test:` as appropriate
+- CLAUDE.md compliance: "Follow all rules in the project's CLAUDE.md"
+- API verification: "Before writing code that uses any library/framework beyond basic builtins, use Context7 (resolve-library-id → get-library-docs) to verify current patterns. Do not guess."
+- Context hygiene: "Write code directly to files. Do not draft code in your response then also write it to a file. Use cp/mv for file operations, not read-then-write."
+- Findings handoff: "Write detailed discoveries (file paths, interface shapes, patterns, gotchas) to `.tasks/explore-findings.md`. Return only a compact summary to the orchestrator."
+- Data-first: "Read `references/data-first-dev.md`. Verify API response shapes before writing rendering code. Use `[DATA-FLOW]` type-shape logs. Run `agent-browser errors` after each change."
 
 Run tasks respecting dependency order. After each completes, run its acceptance check, update `.tasks/plan.md`, then unblock downstream.
 
@@ -211,3 +216,13 @@ As tasks progress, update BOTH the mermaid block (node label emoji + style color
 ## Degradation
 
 If Agent Teams unavailable (flag not set, no tmux): L3 → run as L2 (sequential subagents). Tell user how to enable Agent Teams.
+
+## Session End
+
+When all tasks complete:
+1. Update plan file (`$MAIN_DIR/.tasks/$BRANCH.md`): all task statuses, mermaid styles, and add a `## Summary` with completion count, files changed, verification results.
+2. If L3: `Teammate({ operation: "cleanup" })`
+3. Report completion with merge guidance based on risk tiers:
+   - All routine → "Ready to merge."
+   - Has careful → "Review diff before merging."
+   - Has critical → "Consider a review pass before merging."

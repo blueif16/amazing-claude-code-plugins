@@ -117,9 +117,7 @@ for script in "${SCRIPTS[@]}"; do
     cp "$src" "$dst"
 
     # Patch: replace any osascript-based notify() function with our cross-platform version.
-    # The pattern: from 'notify() {' through the closing '}' of the function.
     if grep -q 'osascript' "$dst" 2>/dev/null; then
-        # Replace the osascript notify function with a source of our helper
         sed -i '/^notify() {/,/^}/c\
 # Cross-platform notifications (patched by win/install.sh)\
 source ~/.cc/notify.sh' "$dst"
@@ -158,13 +156,6 @@ for cmd_file in "$SCRIPT_DIR/commands/"*.md; do
     log "commands/$(basename "$cmd_file")"
 done
 
-# Statusline
-if [ -f "$SETUP_DIR/../setup/statusline.sh" ]; then
-    cp "$SETUP_DIR/../setup/statusline.sh" ~/.claude/statusline.sh
-    chmod +x ~/.claude/statusline.sh
-    log "statusline.sh"
-fi
-
 # ── 4. settings.json ──────────────────────────────────────────
 header "4/5 Claude Settings"
 
@@ -174,17 +165,12 @@ if [ -f "$SETTINGS_FILE" ]; then
     warn "settings.json already exists — not overwriting"
     info "Verify these keys are set:"
     echo '  "env": { "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1", "CLAUDE_CODE_TEAMMATE_MODE": "tmux" }'
-    echo '  "statusLine": { "type": "command", "command": "bash ~/.claude/statusline.sh" }'
 else
     cat > "$SETTINGS_FILE" << 'SETTINGS'
 {
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "CLAUDE_CODE_TEAMMATE_MODE": "tmux"
-  },
-  "statusLine": {
-    "type": "command",
-    "command": "bash ~/.claude/statusline.sh"
   },
   "permissions": {
     "allow": [
@@ -201,7 +187,7 @@ else
   }
 }
 SETTINGS
-    log "settings.json created with Agent Teams + statusline + permissions"
+    log "settings.json created with Agent Teams + permissions"
 fi
 
 # ── 5. Summary + manual steps ─────────────────────────────────
@@ -209,7 +195,7 @@ header "5/5 Manual Steps Remaining"
 
 echo ""
 echo -e "${BOLD}A. Add twork to ~/.zshrc:${R}"
-echo -e "   ${DIM}cat ${WIN_DIR}/twork.zsh >> ~/.zshrc && source ~/.zshrc${R}"
+echo -e "   ${DIM}echo \"\" >> ~/.zshrc && cat ${WIN_DIR}/twork.zsh >> ~/.zshrc && source ~/.zshrc${R}"
 echo ""
 echo -e "${BOLD}B. Add lazygit keybinding to ~/.wezterm.lua:${R}"
 echo -e "   ${DIM}See ${WIN_DIR}/wezterm-cloudmate.lua for the Ctrl+Shift+G binding${R}"
